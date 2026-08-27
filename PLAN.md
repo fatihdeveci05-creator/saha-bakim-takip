@@ -60,7 +60,7 @@ Rol bazlı görünürlük: alt yüklenici sadece kendi işlerini/sahasını gör
 | Backend + Web Paneli | **Tek Nuxt 3 Nitro projesi** (`server/api/` = API, `pages/` = İşveren web paneli) | Mekanik projesinde kanıtlanmış pattern (PM2+nginx+MySQL, tek deploy), aynı altyapı tekrar kullanılır |
 | DB | MySQL | Mevcut Hetzner altyapısıyla tutarlı |
 | ORM | Drizzle ORM (tip-güvenli) veya doğrudan `mysql2` | Basit, hafif |
-| Foto depolama | **Başlangıç: VPS disk** (`/uploads/{site_id}/{work_order_id}/...`), büyürse Hetzner Object Storage'a taşınabilir | Erken optimizasyona gerek yok, disk doluluğu izlenir |
+| Foto depolama | **Ayrı Hetzner Volume** (`/uploads/{site_id}/{work_order_id}/...`), VPS'in OS diskinden bağımsız | Foto hacmi sürekli büyür (bkz. aşağıdaki hesap) — Volume, VPS'i büyütmeden online genişletilebilir |
 | Push bildirim | Firebase Cloud Messaging | Atama, red gerekçesi, SLA aşımı |
 | Zamanlanmış görev | node-cron / Nitro scheduled task | SLA aşım kontrolü |
 | Kimlik doğrulama | JWT (access+refresh), payload'da `taraf`+`rol` | Her endpoint'te taraf/rol bazlı yetki kontrolü |
@@ -68,6 +68,16 @@ Rol bazlı görünürlük: alt yüklenici sadece kendi işlerini/sahasını gör
 **Denetim bütünlüğü kuralı**: Denetlenmiş (`onaylandı`/`reddedildi`) iş emirleri API'de **UPDATE edilemez** — düzeltme sadece `parent_work_order_id` ile yeni satır olarak eklenir. Hiçbir kayıt hard-delete edilmez (append-only). Bu, verinin sonradan değiştirilemeyeceğini mimari olarak garanti eder.
 
 > Not: Bu bir öneridir, sabit değil — istenirse Nuxt+Capacitor (Mekanik projesindeki pattern) ile de tek kod tabanından web+mobil üretilebilir. Kamera/offline/GPS ağırlıklı kullanım nedeniyle Flutter öneriliyor.
+
+## 4.1 Sunucu Boyutlandırma (tahmini)
+
+Örnek senaryo: 30 alt yüklenici saha personeli, 5-10 işveren personeli, 300 ekipman, personel başına günlük 3 iş emri, iş emri başına 4 foto (~2MB, mobilde sıkıştırılmış).
+
+- **Asıl darboğaz CPU değil, foto deposu**: 90 iş/gün × 4 foto × 2MB ≈ 720MB/gün ≈ 21GB/ay ≈ **~260GB/yıl**, 3 yılda ~780GB-1TB.
+- **Compute**: 2-3 vCPU / 4GB RAM / ~80GB SSD (Hetzner CPX21 sınıfı) — Nitro API + MySQL için bu ölçekte fazlasıyla yeterli, eşzamanlı kullanıcı sayısı düşük ve trafik hafif JSON ağırlıklı.
+- **Foto deposu**: ayrı Hetzner Volume, başlangıç 100-200GB, ihtiyaca göre online büyütülür.
+- **Zorunlu**: Flutter'da yüklemeden önce foto sıkıştırma/resize (max ~1920px, JPEG q~80) — bu, ham kamera çekimlerine göre depolama ihtiyacını 3-5x azaltır.
+- Gerçek personel/ekipman sayıları netleşince bu hesap güncellenmeli.
 
 ## 5. Ekran Listesi (taslak)
 
