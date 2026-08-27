@@ -1,0 +1,19 @@
+node_modules/
+.output/
+.nuxt/
+dist/
+build/
+*.log
+.env
+.DS_Store
+
+# Flutter
+.dart_tool/
+.flutter-plugin-dependencies
+.packages
+.pub-cache/
+.pub/
+**/ios/Pods/
+**/android/.gradle/
+*.iml
+.idea/
