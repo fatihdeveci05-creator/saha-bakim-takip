@@ -71,12 +71,13 @@ Rol bazlı görünürlük: alt yüklenici sadece kendi işlerini/sahasını gör
 
 ## 4.1 Sunucu Boyutlandırma (tahmini)
 
-Örnek senaryo: 30 alt yüklenici saha personeli, 5-10 işveren personeli, 300 ekipman, personel başına günlük 3 iş emri, iş emri başına 4 foto (~2MB, mobilde sıkıştırılmış).
+Gerçek senaryo (kullanıcıdan, 28.08): 30 alt yüklenici saha personeli ama **2 kişi = 1 ekip** (15 ekip); her ekip fotoğraf atmıyor, günde ortalama **~10 cihaz** aktif olarak foto paylaşıyor. 5-10 işveren personeli, ~300 ekipman, cihaz başına günlük ~3 iş emri, iş emri başına ~4 foto (~2MB, mobilde sıkıştırılmış).
 
-- **Asıl darboğaz CPU değil, foto deposu**: 90 iş/gün × 4 foto × 2MB ≈ 720MB/gün ≈ 21GB/ay ≈ **~260GB/yıl**, 3 yılda ~780GB-1TB.
-- **Compute**: 2-3 vCPU / 4GB RAM / ~80GB SSD (Hetzner CPX21 sınıfı) — Nitro API + MySQL için bu ölçekte fazlasıyla yeterli, eşzamanlı kullanıcı sayısı düşük ve trafik hafif JSON ağırlıklı.
-- **Foto deposu**: ayrı Hetzner Volume, başlangıç 100-200GB, ihtiyaca göre online büyütülür.
+- **Asıl darboğaz CPU değil, foto deposu**: 10 cihaz × 3 iş/gün × 4 foto × 2MB ≈ 240MB/gün ≈ 7.2GB/ay ≈ **~86GB/yıl**, 3 yılda ~260GB.
+- **Compute**: 2 vCPU / 4GB RAM / ~40-80GB SSD (Hetzner CX22/CPX11 sınıfı) yeterli — günlük 10 aktif cihaz + birkaç işveren kullanıcısı çok hafif bir yük, öngörülenden bile küçük.
+- **Foto deposu**: ayrı Hetzner Volume, başlangıç **50-100GB** yeterli, yıllık ~86GB artışa göre 1-2 yılda büyütme kararı verilir (online genişletilebilir).
 - **Zorunlu**: Flutter'da yüklemeden önce foto sıkıştırma/resize (max ~1920px, JPEG q~80) — bu, ham kamera çekimlerine göre depolama ihtiyacını 3-5x azaltır.
+- Ekipman sayısı (300) hâlâ varsayım — netleşirse iş emri sıklığı tahmini güncellenebilir, ama fotoğraf hacmi asıl olarak aktif cihaz sayısına bağlı, o artık biliniyor.
 - Gerçek personel/ekipman sayıları netleşince bu hesap güncellenmeli.
 
 ## 5. Ekran Listesi (taslak)
