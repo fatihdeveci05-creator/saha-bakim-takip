@@ -40,7 +40,7 @@ Rol bazlı görünürlük: alt yüklenici sadece kendi işlerini/sahasını gör
 - **equipment** — id, site_id, tip (asansör/yürüyen merdiven), marka, model, seri_no, kurulum_tarihi
 - **work_orders** (iş emri) — id, equipment_id, tip (bakım/arıza/kontrol), **atanan_user_id (bireysel personel, ekip değil)**, öncelik, durum (bekliyor/devam/tamamlandı/**denetim_bekliyor**/**onaylandı**/**reddedildi**), açıklama, **`parent_work_order_id`** (reddedilip yeniden açılan işlerde önceki kayda referans), ve zaman damgaları:
   - `occurred_at` — arızanın oluştuğu/fark edildiği zaman (varsa)
-  - `reported_at` — arızanın sisteme bildirildiği zaman
+  - `reported_at` (cihazdan gelen) + `reported_at_server` (sunucunun aldığı an) — ikisi ayrı tutulur, cihaz saati kurcalanmışsa fark edilebilir
   - `response_started_at` — müdahalenin başladığı zaman → **müdahale süresi** = bu − reported_at
   - `resolved_at` — çözüldüğü zaman, **`resolved_by_user_id`** ile birlikte → **çözüm süresi** = bu − reported_at
 - **work_order_reviews** (denetim kaydı) — id, work_order_id, reviewer_user_id, sonuç (onay/red), gerekçe, incelenen_zaman — **her denetim turu ayrı satır, geçmiş tutulur**
@@ -56,12 +56,16 @@ Rol bazlı görünürlük: alt yüklenici sadece kendi işlerini/sahasını gör
 | Katman | Seçim | Neden |
 |---|---|---|
 | Mobil (iOS+Android) | **Flutter** | Tek kod tabanı, kamera + GPS + offline paket ekosistemi saha uygulamaları için olgun; Sefirox iOS'ta da Flutter deneyimi var |
-| Offline senkronizasyon | Local DB (sqflite/drift) + sync queue | Asansör kuyusu/bodrum gibi sinyalsiz alanlarda çalışabilmeli — iş kaydı, foto, malzeme kullanım lokalde tutulur, bağlantı gelince senkronize olur |
-| Backend API | Node.js (Nuxt 3 Nitro) + MySQL | Mevcut Hetzner VPS/Mekanik altyapısıyla aynı pattern, deploy deneyimi hazır |
-| Web Yönetim Paneli | Nuxt 3 | Yönetici/Sorumlu için masaüstü dashboard, raporlama, atama |
-| Foto depolama | VPS disk (ileride Hetzner Object Storage) | Basit başlangıç, büyürse S3-uyumlu depoya taşınabilir |
-| Push bildirim | Firebase Cloud Messaging | İş atama, SLA aşımı uyarısı |
-| Kimlik doğrulama | JWT + rol bazlı yetkilendirme | Mevcut projelerle tutarlı |
+| Offline senkronizasyon | Local DB (sqflite/drift) + sync queue, kayıtlar client-taraflı UUID ile oluşturulur | Asansör kuyusu/bodrum gibi sinyalsiz alanlarda çalışabilmeli; UUID senkronizasyonda çakışma/duplikasyonu önler |
+| Backend + Web Paneli | **Tek Nuxt 3 Nitro projesi** (`server/api/` = API, `pages/` = İşveren web paneli) | Mekanik projesinde kanıtlanmış pattern (PM2+nginx+MySQL, tek deploy), aynı altyapı tekrar kullanılır |
+| DB | MySQL | Mevcut Hetzner altyapısıyla tutarlı |
+| ORM | Drizzle ORM (tip-güvenli) veya doğrudan `mysql2` | Basit, hafif |
+| Foto depolama | **Başlangıç: VPS disk** (`/uploads/{site_id}/{work_order_id}/...`), büyürse Hetzner Object Storage'a taşınabilir | Erken optimizasyona gerek yok, disk doluluğu izlenir |
+| Push bildirim | Firebase Cloud Messaging | Atama, red gerekçesi, SLA aşımı |
+| Zamanlanmış görev | node-cron / Nitro scheduled task | SLA aşım kontrolü |
+| Kimlik doğrulama | JWT (access+refresh), payload'da `taraf`+`rol` | Her endpoint'te taraf/rol bazlı yetki kontrolü |
+
+**Denetim bütünlüğü kuralı**: Denetlenmiş (`onaylandı`/`reddedildi`) iş emirleri API'de **UPDATE edilemez** — düzeltme sadece `parent_work_order_id` ile yeni satır olarak eklenir. Hiçbir kayıt hard-delete edilmez (append-only). Bu, verinin sonradan değiştirilemeyeceğini mimari olarak garanti eder.
 
 > Not: Bu bir öneridir, sabit değil — istenirse Nuxt+Capacitor (Mekanik projesindeki pattern) ile de tek kod tabanından web+mobil üretilebilir. Kamera/offline/GPS ağırlıklı kullanım nedeniyle Flutter öneriliyor.
 
@@ -103,7 +107,7 @@ Push bildirimler, harita görünümü (saha/ekip konumları), tam offline senkro
 ## 7. Açık Kararlar (yarın devam)
 
 - [ ] Uygulama adı
-- [ ] Backend'i ayrı Node servis mi yoksa Nuxt Nitro içinde mi tutalım
-- [ ] Foto depolama: VPS disk mi, Object Storage mı (başlangıçta VPS disk yeterli)
-- [ ] Checklist içerikleri (ekipman tipine göre standart kontrol maddeleri) — sahadan örnek gerekiyor
-- [ ] Deploy hedefi: hangi VPS/domain
+- [ ] Checklist içerikleri (ekipman tipine göre standart kontrol maddeleri) — kullanıcı verecek
+- [ ] Deploy hedefi: hangi VPS/domain — backend mimarisi netleştiği için şimdi konuşulabilir (bkz. Bölüm 4)
+
+**Karara bağlanmış**: Backend = tek Nuxt 3 Nitro projesi (API+web panel), MySQL, foto depolama VPS disk ile başlar (bkz. Bölüm 4).
