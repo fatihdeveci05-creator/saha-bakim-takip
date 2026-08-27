@@ -14,7 +14,7 @@ Takip edilecek temel şeyler:
 
 ## 2. Taraflar ve Kullanıcı Rolleri
 
-İki organizasyon var, aynı sistemi paylaşıyorlar ama görevleri zıt: **Alt Yüklenici işi yapıp veriyi girer, İşveren o veriyi denetler.**
+İki organizasyon var, aynı sistemi paylaşıyorlar ama görevleri zıt: **Alt Yüklenici işi yapıp veriyi girer, İşveren o veriyi denetler.** Sahada tek bir alt yüklenici organizasyonu var (birden fazla alt yüklenici şirketi yok) ama onun **çok sayıda personeli** var — her personelin kendi bireysel kullanıcı girişi olur, böylece bir arızayı **hangi personelin çözdüğü** tek tek izlenebilir (paylaşımlı/ekip login'i yok).
 
 | Taraf | Rol | Yetki |
 |---|---|---|
@@ -25,7 +25,10 @@ Takip edilecek temel şeyler:
 | Alt Yüklenici | **Bakım Ekibi** | Planlı bakım işini yürütür, checklist + malzeme + foto+konum ekler |
 | Alt Yüklenici | **Kontrol Ekibi** | Kontrol/inceleme kaydı girer |
 
-**Denetim akışı**: Alt yüklenici bir iş emrini "tamamlandı" yapınca durum **"denetim bekliyor"**ya düşer. İşveren tarafı (Yönetici/Denetçi) fotoları + GPS konumunu + zaman damgalarını inceler → **onaylar** ya da **gerekçeyle reddeder**. Reddedilen iş alt yükleniciye geri döner, düzeltme/ek bilgi istenir. Onay geçmişi (kim, ne zaman, ne dedi) saklanır.
+**Denetim akışı**: Alt yüklenici bir iş emrini "tamamlandı" yapınca durum **"denetim bekliyor"**ya düşer. İşveren tarafı (Yönetici/Denetçi) fotoları + GPS konumunu + zaman damgalarını inceler → **onaylar** ya da **gerekçeyle reddeder**.
+- Onaylanırsa iş emri "onaylandı" ile kapanır.
+- Reddedilirse iş emri **"reddedildi" durumunda, orijinal fotoları/verisiyle olduğu gibi kalır — üzerine yazılmaz** (denetim/tarihçe kaydı olarak korunur). Aynı anda, aynı ekipman için **yeni bir iş emri** açılır (`parent_work_order_id` ile reddedilen işe bağlı), alt yükleniciye tekrar atanır ve düzeltme baştan, temiz bir kayıt olarak girilir.
+- Onay/red geçmişi (kim, ne zaman, ne dedi) ayrıca saklanır.
 
 Rol bazlı görünürlük: alt yüklenici sadece kendi işlerini/sahasını görür, işveren tüm alt yüklenici verisini görür ama kendisi saha kaydı girmez — sadece denetler.
 
@@ -35,11 +38,11 @@ Rol bazlı görünürlük: alt yüklenici sadece kendi işlerini/sahasını gör
 - **teams** — id, ad, tip (arıza/bakım/kontrol), sorumlu_user_id (alt yüklenici tarafında)
 - **sites** — id, ad, adres, konum (lat/lng), denetçi_user_id (işveren tarafından sorumlu)
 - **equipment** — id, site_id, tip (asansör/yürüyen merdiven), marka, model, seri_no, kurulum_tarihi
-- **work_orders** (iş emri) — id, equipment_id, tip (bakım/arıza/kontrol), atanan_user/team, öncelik, durum (bekliyor/devam/tamamlandı/**denetim_bekliyor**/**onaylandı**/**reddedildi**), açıklama, ve zaman damgaları:
+- **work_orders** (iş emri) — id, equipment_id, tip (bakım/arıza/kontrol), **atanan_user_id (bireysel personel, ekip değil)**, öncelik, durum (bekliyor/devam/tamamlandı/**denetim_bekliyor**/**onaylandı**/**reddedildi**), açıklama, **`parent_work_order_id`** (reddedilip yeniden açılan işlerde önceki kayda referans), ve zaman damgaları:
   - `occurred_at` — arızanın oluştuğu/fark edildiği zaman (varsa)
   - `reported_at` — arızanın sisteme bildirildiği zaman
   - `response_started_at` — müdahalenin başladığı zaman → **müdahale süresi** = bu − reported_at
-  - `resolved_at` — çözüldüğü zaman → **çözüm süresi** = bu − reported_at
+  - `resolved_at` — çözüldüğü zaman, **`resolved_by_user_id`** ile birlikte → **çözüm süresi** = bu − reported_at
 - **work_order_reviews** (denetim kaydı) — id, work_order_id, reviewer_user_id, sonuç (onay/red), gerekçe, incelenen_zaman — **her denetim turu ayrı satır, geçmiş tutulur**
 - **materials** — id, ad, birim, stok_adedi
 - **work_order_materials** — work_order_id, material_id, miktar
@@ -72,7 +75,7 @@ Rol bazlı görünürlük: alt yüklenici sadece kendi işlerini/sahasını gör
 - Malzeme kullanım girişi
 - Fotoğraf ekleme (kamera + otomatik GPS konumu — galeriden seçim yok)
 - Arıza bildir (yeni arıza kaydı aç, bildirim zamanı otomatik)
-- Reddedilen iş → düzeltme/ek bilgi girip yeniden gönderme
+- Reddedilen işlerim listesi → her biri, üzerinden açılan **yeni iş emrine** bağlantı (eski kayıt salt-okunur kalır, düzeltme yeni kayıt olarak girilir)
 - Bildirimler (atama, red gerekçesi)
 
 **Web (İşveren — Yönetici/Denetçi):**
@@ -104,5 +107,3 @@ Push bildirimler, harita görünümü (saha/ekip konumları), tam offline senkro
 - [ ] Foto depolama: VPS disk mi, Object Storage mı (başlangıçta VPS disk yeterli)
 - [ ] Checklist içerikleri (ekipman tipine göre standart kontrol maddeleri) — sahadan örnek gerekiyor
 - [ ] Deploy hedefi: hangi VPS/domain
-- [ ] Reddedilen iş yeniden gönderildiğinde eski foto/veri korunsun mu, üzerine mi yazılsın (revizyon geçmişi tasarımı)
-- [ ] Bir sahada birden fazla alt yüklenici olabilir mi, yoksa saha başına tek alt yüklenici mi
