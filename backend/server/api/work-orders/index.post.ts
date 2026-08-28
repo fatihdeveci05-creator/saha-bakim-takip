@@ -16,8 +16,10 @@ const bodySchema = z.object({
   occurredAt: z.string().datetime().optional(),
 })
 
-// Yönetici/sorumlu istediği personele iş atayabilir (bakım/kontrol planlaması).
-// Diğer alt yüklenici personeli sadece kendi adına arıza bildirebilir (self-servis).
+// Yönetici/sorumlu istediği personele iş atayabilir (bakım/kontrol planlaması) —
+// personel seçimi zorunlu değil, atanmamış bırakılıp sonradan atanabilir
+// (bkz. PATCH /api/work-orders/:id/assign). Diğer alt yüklenici personeli
+// sadece kendi adına arıza bildirebilir (self-servis).
 const CAN_ASSIGN_TO_OTHERS = ['yonetici', 'sorumlu']
 
 export default defineEventHandler(async (event) => {
@@ -25,12 +27,9 @@ export default defineEventHandler(async (event) => {
   const body = await readValidatedBody(event, bodySchema.parse)
 
   const canAssignToOthers = CAN_ASSIGN_TO_OTHERS.includes(payload.rol)
-  let atananUserId: number
+  let atananUserId: number | undefined
 
   if (canAssignToOthers) {
-    if (!body.atananUserId) {
-      throw createError({ statusCode: 400, statusMessage: 'atananUserId zorunludur' })
-    }
     atananUserId = body.atananUserId
   } else if (payload.taraf === 'alt_yuklenici') {
     if (body.tip !== 'ariza') {
@@ -53,13 +52,15 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: 'Ekipman bulunamadı' })
   }
 
-  const [assignee] = await db
-    .select({ id: users.id, taraf: users.taraf, aktif: users.aktif })
-    .from(users)
-    .where(eq(users.id, atananUserId))
-    .limit(1)
-  if (!assignee || assignee.taraf !== 'alt_yuklenici' || !assignee.aktif) {
-    throw createError({ statusCode: 400, statusMessage: 'Atanan kullanıcı geçersiz (aktif alt yüklenici personeli olmalı)' })
+  if (atananUserId) {
+    const [assignee] = await db
+      .select({ id: users.id, taraf: users.taraf, aktif: users.aktif })
+      .from(users)
+      .where(eq(users.id, atananUserId))
+      .limit(1)
+    if (!assignee || assignee.taraf !== 'alt_yuklenici' || !assignee.aktif) {
+      throw createError({ statusCode: 400, statusMessage: 'Atanan kullanıcı geçersiz (aktif alt yüklenici personeli olmalı)' })
+    }
   }
 
   const now = new Date()
@@ -82,12 +83,14 @@ export default defineEventHandler(async (event) => {
   })
 
   if (canAssignToOthers) {
-    await notifyUser(
-      atananUserId,
-      'atama',
-      `Size yeni bir iş atandı: ${TIP_LABELS[body.tip]} — ${eq1.siteAd}`,
-      result.insertId,
-    )
+    if (atananUserId) {
+      await notifyUser(
+        atananUserId,
+        'atama',
+        `Size yeni bir iş atandı: ${TIP_LABELS[body.tip]} — ${eq1.siteAd}`,
+        result.insertId,
+      )
+    }
   } else {
     await notifyYoneticiler('yeni_ariza', `Yeni arıza bildirildi: ${eq1.siteAd}`, result.insertId)
   }

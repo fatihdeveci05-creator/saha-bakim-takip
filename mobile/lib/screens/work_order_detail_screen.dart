@@ -8,11 +8,13 @@ import 'package:provider/provider.dart';
 import '../core/api_client.dart';
 import '../core/auth_service.dart';
 import '../core/constants.dart';
+import '../models/auth_user.dart';
 import '../models/equipment.dart';
 import '../models/material_item.dart';
 import '../models/site.dart';
 import '../models/work_order.dart';
 import '../widgets/status_badge.dart';
+import 'photo_viewer_screen.dart';
 
 class WorkOrderDetailScreen extends StatefulWidget {
   const WorkOrderDetailScreen({super.key, required this.workOrderId});
@@ -28,6 +30,9 @@ class _WorkOrderDetailScreenState extends State<WorkOrderDetailScreen> {
   Equipment? _equipment;
   Site? _site;
   List<MaterialItem> _materials = [];
+  List<AuthUser> _workers = [];
+  int? _assignUserId;
+  bool _assigning = false;
   bool _loading = true;
   bool _busy = false;
   String? _error;
@@ -56,12 +61,20 @@ class _WorkOrderDetailScreenState extends State<WorkOrderDetailScreen> {
       final detailRes = await _dio.get('/api/work-orders/${widget.workOrderId}');
       final detail = WorkOrderDetail.fromJson(detailRes.data as Map<String, dynamic>);
 
+      final canAssign = mounted && ['yonetici', 'sorumlu'].contains(context.read<AuthService>().currentUser?.rol);
       final results = await Future.wait([
         _dio.get('/api/equipment/${detail.equipmentId}'),
         _dio.get('/api/materials'),
+        if (canAssign) _dio.get('/api/users'),
       ]);
       final equipment = Equipment.fromJson(results[0].data as Map<String, dynamic>);
       final materials = (results[1].data as List<dynamic>).map((e) => MaterialItem.fromJson(e as Map<String, dynamic>)).toList();
+      final workers = canAssign
+          ? (results[2].data as List<dynamic>)
+                .map((e) => AuthUser.fromJson(e as Map<String, dynamic>))
+                .where((u) => u.isAltYuklenici)
+                .toList()
+          : <AuthUser>[];
       final siteRes = await _dio.get('/api/sites/${equipment.siteId}');
 
       setState(() {
@@ -69,6 +82,7 @@ class _WorkOrderDetailScreenState extends State<WorkOrderDetailScreen> {
         _equipment = equipment;
         _site = Site.fromJson(siteRes.data as Map<String, dynamic>);
         _materials = materials;
+        _workers = workers;
         _loading = false;
       });
     } catch (_) {
@@ -144,6 +158,20 @@ class _WorkOrderDetailScreenState extends State<WorkOrderDetailScreen> {
       await _showError(e.response?.data?['statusMessage'] as String? ?? 'Durum güncellenemedi');
     } finally {
       if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _submitAssign() async {
+    if (_assignUserId == null) return;
+    setState(() => _assigning = true);
+    try {
+      await _dio.patch('/api/work-orders/${widget.workOrderId}/assign', data: {'atananUserId': _assignUserId});
+      _assignUserId = null;
+      await _load();
+    } on DioException catch (e) {
+      await _showError(e.response?.data?['statusMessage'] as String? ?? 'Atama başarısız');
+    } finally {
+      if (mounted) setState(() => _assigning = false);
     }
   }
 
@@ -253,6 +281,7 @@ class _WorkOrderDetailScreenState extends State<WorkOrderDetailScreen> {
     final detail = _detail;
     final auth = context.watch<AuthService>();
     final canReview = detail != null && detail.durum == 'onay_bekliyor' && auth.currentUser?.rol == 'yonetici';
+    final photoUrls = detail?.photos.map((p) => '${ApiConfig.baseUrl}${p.url}').toList() ?? const <String>[];
     return Scaffold(
       appBar: AppBar(title: Text('İş Emri #${widget.workOrderId}')),
       body: _loading
@@ -280,6 +309,30 @@ class _WorkOrderDetailScreenState extends State<WorkOrderDetailScreen> {
                     ],
                   ),
                   if (detail.aciklama != null) ...[const SizedBox(height: 12), Text(detail.aciklama!)],
+
+                  if (detail.atananUserId == null && detail.durum == 'bekliyor' && _workers.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    const Text('Bu iş emri henüz kimseye atanmadı', style: TextStyle(color: Colors.orange, fontSize: 13)),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: DropdownButtonFormField<int>(
+                            initialValue: _assignUserId,
+                            decoration: const InputDecoration(labelText: 'Personel seçin', border: OutlineInputBorder(), isDense: true),
+                            items: _workers.map((u) => DropdownMenuItem(value: u.id, child: Text('${u.ad} (${u.rol})'))).toList(),
+                            onChanged: (v) => setState(() => _assignUserId = v),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        FilledButton(
+                          onPressed: _assignUserId == null || _assigning ? null : _submitAssign,
+                          child: const Text('Ata'),
+                        ),
+                      ],
+                    ),
+                  ],
+
                   const Divider(height: 32),
 
                   Text('Fotoğraflar (${detail.photos.length}/3 min)', style: const TextStyle(fontWeight: FontWeight.bold)),
@@ -291,9 +344,14 @@ class _WorkOrderDetailScreenState extends State<WorkOrderDetailScreen> {
                     itemCount: detail.photos.length,
                     itemBuilder: (context, i) {
                       final p = detail.photos[i];
-                      return ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: Image.network('${ApiConfig.baseUrl}${p.url}', fit: BoxFit.cover, errorBuilder: (_, _, _) => Container(color: Colors.grey[300])),
+                      return GestureDetector(
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute(builder: (_) => PhotoViewerScreen(imageUrls: photoUrls, initialIndex: i)),
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Image.network('${ApiConfig.baseUrl}${p.url}', fit: BoxFit.cover, errorBuilder: (_, _, _) => Container(color: Colors.grey[300])),
+                        ),
                       );
                     },
                   ),

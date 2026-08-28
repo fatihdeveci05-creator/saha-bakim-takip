@@ -59,7 +59,7 @@ async function submit() {
       body: {
         equipmentId: Number(form.equipmentId),
         tip: form.tip,
-        atananUserId: Number(form.atananUserId),
+        atananUserId: form.atananUserId ? Number(form.atananUserId) : undefined,
         oncelik: form.oncelik || undefined,
         aciklama: form.aciklama || undefined,
       },
@@ -117,9 +117,9 @@ async function submit() {
       </div>
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px">
         <div class="field">
-          <label>Atanacak Personel</label>
-          <select v-model="form.atananUserId" required>
-            <option value="" disabled>Seçin</option>
+          <label>Atanacak Personel (isteğe bağlı)</label>
+          <select v-model="form.atananUserId">
+            <option value="">Şimdilik atama</option>
             <option v-for="u in altYuklenicilar" :key="u.id" :value="u.id">{{ u.ad }} ({{ u.rol }})</option>
           </select>
         </div>

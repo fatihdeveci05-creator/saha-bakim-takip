@@ -68,8 +68,8 @@ class _AssignWorkOrderScreenState extends State<AssignWorkOrderScreen> {
       _selectedSiteId == null ? [] : _equipment.where((e) => e.siteId == _selectedSiteId).toList();
 
   Future<void> _submit() async {
-    if (_selectedEquipmentId == null || _selectedUserId == null) {
-      setState(() => _error = 'Ekipman ve personel seçin');
+    if (_selectedEquipmentId == null) {
+      setState(() => _error = 'Ekipman seçin');
       return;
     }
     setState(() {
@@ -84,7 +84,7 @@ class _AssignWorkOrderScreenState extends State<AssignWorkOrderScreen> {
         data: {
           'equipmentId': _selectedEquipmentId,
           'tip': _tip,
-          'atananUserId': _selectedUserId,
+          if (_selectedUserId != null) 'atananUserId': _selectedUserId,
           if (_oncelik.isNotEmpty) 'oncelik': _oncelik,
           if (aciklama.isNotEmpty) 'aciklama': aciklama,
         },
@@ -148,8 +148,11 @@ class _AssignWorkOrderScreenState extends State<AssignWorkOrderScreen> {
                   const SizedBox(height: 12),
                   DropdownButtonFormField<int>(
                     initialValue: _selectedUserId,
-                    decoration: const InputDecoration(labelText: 'Atanacak Personel', border: OutlineInputBorder()),
-                    items: _workers.map((u) => DropdownMenuItem(value: u.id, child: Text('${u.ad} (${u.rol})'))).toList(),
+                    decoration: const InputDecoration(labelText: 'Atanacak Personel (isteğe bağlı)', border: OutlineInputBorder()),
+                    items: [
+                      const DropdownMenuItem(child: Text('Şimdilik atama')),
+                      ..._workers.map((u) => DropdownMenuItem(value: u.id, child: Text('${u.ad} (${u.rol})'))),
+                    ],
                     onChanged: (v) => setState(() => _selectedUserId = v),
                   ),
                   const SizedBox(height: 12),

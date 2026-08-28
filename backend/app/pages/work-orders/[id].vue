@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import type { WorkOrderDetail, Equipment, Site } from '~/types'
+import type { WorkOrderDetail, Equipment, Site, AppUser } from '~/types'
 import { DURUM_LABELS } from '~/types'
 
 const route = useRoute()
 const { apiFetch } = useApi()
+const auth = useAuth()
 const id = route.params.id as string
 
 const { data: wo, pending, error, refresh } = await useAsyncData(`work-order-${id}`, () =>
@@ -26,6 +27,33 @@ const tipLabels: Record<string, string> = { bakim: 'Bakım', ariza: 'Arıza', ko
 function fmt(d: string | null) {
   if (!d) return '—'
   return new Date(d).toLocaleString('tr-TR')
+}
+
+const lightbox = ref<{ open: (i: number) => void }>()
+
+const canAssign = computed(() => ['yonetici', 'sorumlu'].includes(auth.user.value?.rol ?? ''))
+const { data: altYuklenicilar } = await useAsyncData('assign-users-lookup', async () => {
+  if (!canAssign.value) return []
+  const all = await apiFetch<AppUser[]>('/api/users')
+  return all.filter((u) => u.taraf === 'alt_yuklenici' && u.aktif)
+})
+const assignUserId = ref('')
+const assignError = ref('')
+const assigning = ref(false)
+
+async function submitAssign() {
+  if (!assignUserId.value) return
+  assignError.value = ''
+  assigning.value = true
+  try {
+    await apiFetch(`/api/work-orders/${id}/assign`, { method: 'PATCH', body: { atananUserId: Number(assignUserId.value) } })
+    assignUserId.value = ''
+    await refresh()
+  } catch (err) {
+    assignError.value = (err as { data?: { statusMessage?: string } })?.data?.statusMessage || 'Atama başarısız'
+  } finally {
+    assigning.value = false
+  }
 }
 
 const gerekce = ref('')
@@ -84,13 +112,30 @@ async function submitReview(sonuc: 'onay' | 'red') {
           </div>
         </div>
         <p v-if="wo.aciklama" style="margin: 12px 0 0">{{ wo.aciklama }}</p>
+
+        <div v-if="!wo.atananUserId && wo.durum === 'bekliyor' && canAssign" style="margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border)">
+          <div class="muted" style="margin-bottom: 6px; font-size: 13px">Bu iş emri henüz kimseye atanmadı</div>
+          <div v-if="assignError" class="error-box">{{ assignError }}</div>
+          <div style="display: flex; gap: 8px">
+            <select v-model="assignUserId" style="width: auto; flex: 1">
+              <option value="">Personel seçin</option>
+              <option v-for="u in altYuklenicilar" :key="u.id" :value="u.id">{{ u.ad }} ({{ u.rol }})</option>
+            </select>
+            <button class="btn btn-primary" :disabled="!assignUserId || assigning" @click="submitAssign">Ata</button>
+          </div>
+        </div>
       </div>
 
       <div class="card">
         <h3 style="margin-top: 0">Fotoğraflar ({{ wo.photos.length }})</h3>
         <div v-if="!wo.photos.length" class="muted">Henüz fotoğraf eklenmemiş.</div>
         <div v-else style="display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px">
-          <div v-for="p in wo.photos" :key="p.id" style="border: 1px solid var(--border); border-radius: 8px; overflow: hidden">
+          <div
+            v-for="(p, i) in wo.photos"
+            :key="p.id"
+            style="border: 1px solid var(--border); border-radius: 8px; overflow: hidden; cursor: zoom-in"
+            @click="lightbox?.open(i)"
+          >
             <img :src="p.url" style="width: 100%; height: 110px; object-fit: cover; display: block; background: var(--bg)" />
             <div style="padding: 6px 8px; font-size: 11px" class="muted">
               {{ p.gpsLat }}, {{ p.gpsLng }}<br />
@@ -99,6 +144,8 @@ async function submitReview(sonuc: 'onay' | 'red') {
           </div>
         </div>
       </div>
+
+      <PhotoLightbox ref="lightbox" :photos="wo.photos" />
 
       <div v-if="wo.durum === 'onay_bekliyor'" class="card">
         <h3 style="margin-top: 0">Denetim Kararı</h3>
