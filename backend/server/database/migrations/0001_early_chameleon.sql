@@ -1,0 +1,1 @@
+ALTER TABLE `notifications` ADD `related_work_order_id` int;
