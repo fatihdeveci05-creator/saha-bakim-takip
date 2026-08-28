@@ -121,11 +121,12 @@ Flutter uygulama: iş listesi, müdahale başlat/bitir, durum seçimi (Devam Ede
 **Faz 4 — Gelişmiş**
 Push bildirimler, harita görünümü (saha/ekip konumları), tam offline senkronizasyon, red oranı/tekrarlayan arıza trend analizleri
 
-## 7. Açık Kararlar (yarın devam)
+## 7. Açık Kararlar
 
-- [ ] Deploy hedefi: hangi VPS/domain (kullanıcı geçici bir hedef verecek)
+Hepsi kapandı — sıradaki adım Faz 1 implementasyonu.
 
 **Karara bağlanmış**:
 - Uygulama adı: **ABB Kontrol**
 - Backend = tek Nuxt 3 Nitro projesi (API+web panel), MySQL, foto depolama ayrı Hetzner Volume (bkz. Bölüm 4)
 - Checklist yok (MVP) — bunun yerine basit durum akışı: Devam Edecek / Tamamlandı (min. 3 foto zorunlu) / N/A → otomatik Onay Bekliyor → sadece Yönetici onay/red verir (bkz. Bölüm 2). Hem asansör hem yürüyen merdiven için aynı akış.
+- **Deploy hedefi (geçici)**: `45.155.19.196` (VPS5, SunucumBurada/Başakşehir, Ubuntu 24.04) — Sefirox altyapısında zaten var, 1.9GB RAM / 29GB disk. Üzerinde squid proxy + WireGuard (`10.0.5.2`) Sefirox proxy havuzunun parçası olarak **kalacak, dokunulmayacak**. Eski `whatsapp-siparis-sistemi` kurulumu (pm2 process + nginx site `siparis.sefiroxtv.com` + MariaDB'deki DB) artık gerçek sisteme taşındığı için gereksiz — **gerçek deploy zamanı geldiğinde** kaldırılıp yerine ABB Kontrol kurulacak (şimdiden dokunulmadı, kod henüz yok).
