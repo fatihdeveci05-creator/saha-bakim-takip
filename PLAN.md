@@ -1,4 +1,4 @@
-# Saha Bakım Takip — Proje Planı
+# ABB Kontrol — Proje Planı
 
 ## 1. Özet
 
@@ -123,9 +123,9 @@ Push bildirimler, harita görünümü (saha/ekip konumları), tam offline senkro
 
 ## 7. Açık Kararlar (yarın devam)
 
-- [ ] Uygulama adı
-- [ ] Deploy hedefi: hangi VPS/domain — backend mimarisi netleştiği için şimdi konuşulabilir (bkz. Bölüm 4)
+- [ ] Deploy hedefi: hangi VPS/domain (kullanıcı geçici bir hedef verecek)
 
 **Karara bağlanmış**:
+- Uygulama adı: **ABB Kontrol**
 - Backend = tek Nuxt 3 Nitro projesi (API+web panel), MySQL, foto depolama ayrı Hetzner Volume (bkz. Bölüm 4)
 - Checklist yok (MVP) — bunun yerine basit durum akışı: Devam Edecek / Tamamlandı (min. 3 foto zorunlu) / N/A → otomatik Onay Bekliyor → sadece Yönetici onay/red verir (bkz. Bölüm 2). Hem asansör hem yürüyen merdiven için aynı akış.
