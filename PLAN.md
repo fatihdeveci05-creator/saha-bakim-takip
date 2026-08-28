@@ -2,14 +2,15 @@
 
 ## 1. Özet
 
-Yürüyen merdiven ve asansörlerde **alt yüklenici** saha personelinin yaptığı bakım, onarım, arıza müdahalesi ve kontrol işlemlerini kaydettiği; **işveren** tarafının bu kayıtları denetlediği (onay/red) bir sistem. Müşteri/bina yönetimi katmanı yok — sadece bu iki taraf var. iOS + Android mobil uygulama (alt yüklenici saha ekipleri) + web denetim/yönetim paneli (işveren) + ortak backend'den oluşur.
+Yürüyen merdiven ve asansörlerde **alt yüklenici** saha personelinin yaptığı bakım, onarım, arıza müdahalesi ve kontrol işlemlerini kaydettiği; **işveren** tarafının bu kayıtları denetlediği (onay/red) bir sistem. Müşteri/bina yönetimi katmanı yok — sadece bu iki taraf var. iOS + Android mobil uygulama (**hem alt yüklenici saha ekipleri hem işveren — aynı uygulama, role göre farklı ekranlar**) + web yönetim paneli (işveren, tam raporlama) + ortak backend'den oluşur.
 
 Takip edilecek temel şeyler:
 - Alt yüklenicinin günlük iş listesi ve durumu
 - Arıza bildirim / müdahale başlama / çözüm saatleri (SLA)
 - Bakım/onarımda kullanılan malzemeler
 - Foto + o anki GPS konumu (kanıt/doğrulama — QR/NFC yok, kamera çekimiyle eş zamanlı konum alınır)
-- İşverenin bu kayıtları inceleyip onaylaması/reddetmesi (**denetim akışı**)
+- **Saha ekiplerinin canlı konumu** — İşveren tarafında haritada, 1 dakikada bir güncellenir
+- İşverenin bu kayıtları inceleyip onaylaması/reddetmesi (**denetim akışı**, hem web hem mobilden yapılabilir)
 - Ekipman (asansör/yürüyen merdiven) bazlı geçmiş
 
 ## 2. Taraflar ve Kullanıcı Rolleri
@@ -18,7 +19,7 @@ Takip edilecek temel şeyler:
 
 | Taraf | Rol | Yetki |
 |---|---|---|
-| İşveren | **Yönetici** | Tüm sahalar/ekipmanlar/kayıtlar; tüm denetim geçmişi; raporlar |
+| İşveren | **Yönetici** | Tüm sahalar/ekipmanlar/kayıtlar; tüm denetim geçmişi; raporlar; **hem web panelden hem mobil uygulamadan** onay/red verebilir, saha ekiplerinin canlı konumunu haritada görür |
 | İşveren | **Denetçi (Sorumlu)** | Kendine bağlı saha(lar); alt yüklenicinin girdiği iş emirlerini inceleme, onay/red (gerekçeli), not düşme |
 | Alt Yüklenici | **Sorumlu** | Kendi ekiplerini yönetir, iş atar, kendi sahasının durumunu ve reddedilen işlerini görür |
 | Alt Yüklenici | **Arıza Ekibi** | Arıza bildirir, müdahale başlat/bitir, malzeme/foto+konum ekler |
@@ -30,7 +31,7 @@ Takip edilecek temel şeyler:
 Alt yüklenici personeli bir iş emrinde şu durumlardan birini seçer: **Devam Edecek** / **Tamamlandı** / **N/A**.
 - **Tamamlandı** seçilebilmesi için **en az 3 fotoğraf eklenmiş olması zorunlu** (uygulama bunu zorlar, foto yoksa "Tamamlandı" seçeneği kilitli kalır).
 - Tamamlandı + fotoğraflar girilince durum otomatik olarak **"Onay Bekliyor"**ya geçer — bu personelin seçtiği bir durum değil, sistemin verdiği bir ara durumdur.
-- **Onay Bekliyor**daki bir işi sadece **Yönetici** (İşveren tarafı) onaylayabilir veya reddedebilir (gerekçeli). MVP'de İşveren tarafında onay yetkisi sadece Yönetici'de — ayrı bir Denetçi rolüne şimdilik gerek yok, ihtiyaç çıkarsa sonra eklenir.
+- **Onay Bekliyor**daki bir işi sadece **Yönetici** (İşveren tarafı) onaylayabilir veya reddedebilir (gerekçeli) — **hem mobil uygulamadan hem web panelden**, ikisi de aynı API'yi kullanır. MVP'de İşveren tarafında onay yetkisi sadece Yönetici'de — ayrı bir Denetçi rolüne şimdilik gerek yok, ihtiyaç çıkarsa sonra eklenir.
 - Onaylanırsa iş emri **"Onaylandı"** ile kapanır.
 - Reddedilirse iş emri **"Reddedildi" durumunda, orijinal fotoları/verisiyle olduğu gibi kalır — üzerine yazılmaz** (denetim/tarihçe kaydı olarak korunur). Aynı anda, aynı ekipman için **yeni bir iş emri** açılır (`parent_work_order_id` ile reddedilen işe bağlı), alt yükleniciye tekrar atanır ve düzeltme baştan, temiz bir kayıt olarak girilir.
 - Onay/red geçmişi (kim, ne zaman, ne dedi) ayrıca saklanır.
@@ -56,6 +57,7 @@ Rol bazlı görünürlük: alt yüklenici sadece kendi işlerini/sahasını gör
 - ~~**checklists** / **checklist_items**~~ — **MVP'de yok**, faz sonrası opsiyonel (şimdilik "Tamamlandı" durumu + min. 3 foto yeterli kanıt kabul ediliyor)
 - **work_order_timeline** — durum değişikliği geçmişi, notlar
 - **notifications** — atama/SLA aşımı/denetim sonucu bildirimleri
+- **user_locations** (canlı konum) — user_id (alt yüklenici personeli), lat, lng, updated_at — **sadece en güncel konum tutulur** (upsert, geçmiş/iz kaydı MVP'de yok). Mobil uygulama arka planda **~1 dakikada bir** konumu günceller.
 
 ## 4. Teknoloji Önerisi
 
@@ -69,7 +71,9 @@ Rol bazlı görünürlük: alt yüklenici sadece kendi işlerini/sahasını gör
 | Foto depolama | **Ayrı Hetzner Volume** (`/uploads/{site_id}/{work_order_id}/...`), VPS'in OS diskinden bağımsız | Foto hacmi sürekli büyür (bkz. aşağıdaki hesap) — Volume, VPS'i büyütmeden online genişletilebilir |
 | Push bildirim | Firebase Cloud Messaging | Atama, red gerekçesi, SLA aşımı |
 | Zamanlanmış görev | node-cron / Nitro scheduled task | SLA aşım kontrolü |
-| Kimlik doğrulama | JWT (access+refresh), payload'da `taraf`+`rol` | Her endpoint'te taraf/rol bazlı yetki kontrolü |
+| Kimlik doğrulama | JWT (access+refresh), payload'da `taraf`+`rol` | Her endpoint'te taraf/rol bazlı yetki kontrolü — **aynı auth ile hem mobil hem web'e giriş**, `taraf`/`rol`'e göre farklı ekran seti gösterilir |
+| Harita | Leaflet + OpenStreetMap (web), `flutter_map` + OSM tile (mobil) | Google Maps API key/maliyet gerekmez, bu ölçekte yeterli |
+| Arka plan konum | Flutter `geolocator`, ~1 dk periyotla POST | Android'de pil optimizasyonu arka plan servisini durdurabilir (foreground service bildirimi gerekebilir); iOS'ta "Always" izin + arka plan konum kullanımı App Store review'da gerekçelendirilmeli |
 
 **Denetim bütünlüğü kuralı**: Denetlenmiş (`onaylandı`/`reddedildi`) iş emirleri API'de **UPDATE edilemez** — düzeltme sadece `parent_work_order_id` ile yeni satır olarak eklenir. Hiçbir kayıt hard-delete edilmez (append-only). Bu, verinin sonradan değiştirilemeyeceğini mimari olarak garanti eder.
 
@@ -88,7 +92,9 @@ Gerçek senaryo (kullanıcıdan, 28.08): 30 alt yüklenici saha personeli ama **
 
 ## 5. Ekran Listesi (taslak)
 
-**Mobil (Alt Yüklenici saha ekipleri):**
+Tek Flutter uygulaması, girişte `taraf`/`rol`'e göre farklı ekran seti gösterilir.
+
+**Mobil — Alt Yüklenici saha ekipleri:**
 - Giriş / rol bazlı ana ekran
 - Günlük iş listem (bugün/bekleyen/tamamlanan/**reddedilen**)
 - İş emri detayı (ekipman bilgisi, geçmiş) + durum seç: Devam Edecek / Tamamlandı / N/A (**Tamamlandı, en az 3 foto eklenmeden seçilemez**)
@@ -98,10 +104,19 @@ Gerçek senaryo (kullanıcıdan, 28.08): 30 alt yüklenici saha personeli ama **
 - Arıza bildir (yeni arıza kaydı aç, bildirim zamanı otomatik)
 - Reddedilen işlerim listesi → her biri, üzerinden açılan **yeni iş emrine** bağlantı (eski kayıt salt-okunur kalır, düzeltme yeni kayıt olarak girilir)
 - Bildirimler (atama, red gerekçesi)
+- (Arka planda, kullanıcıya görünmeyen: ~1 dk'da bir konum güncellemesi gönderimi)
 
-**Web (İşveren — Yönetici/Denetçi):**
+**Mobil — İşveren (Yönetici):**
+- Giriş (aynı uygulama, `taraf=işveren` ile farklı ana ekrana yönlenir)
+- **Denetim kuyruğu** — "Onay Bekliyor" işler, foto (min 3)+konum+zaman damgalarıyla inceleme, onay/red (gerekçeli)
+- **Canlı Harita** — saha ekiplerinin anlık konumu (1 dk'da bir güncellenir)
+- Bildirimler (yeni onay bekleyen iş)
+- (Tam raporlama/dashboard mobilde yok — o web panelde; mobil, sahadayken/yoldayken hızlı onay + harita için)
+
+**Web (İşveren — Yönetici):**
 - Dashboard (açık iş sayısı, onay bekleyen sayısı, ortalama müdahale/çözüm süresi, geciken işler)
-- **Denetim kuyruğu** — "Onay Bekliyor" durumundaki işler, foto (min 3)+konum+zaman damgalarıyla inceleme, onay/red (**sadece Yönetici rolü**)
+- **Denetim kuyruğu** — "Onay Bekliyor" durumundaki işler, foto (min 3)+konum+zaman damgalarıyla inceleme, onay/red
+- **Canlı Harita** — saha ekiplerinin anlık konumu (1 dk'da bir güncellenir)
 - İş emri detayı + denetim geçmişi (kim ne zaman ne karar verdi)
 - Saha/ekipman yönetimi (tanımlama, alt yüklenici bunu göremez/değiştiremez)
 - Kullanıcı/ekip yönetimi (her iki taraf da işveren tarafından oluşturulur)
@@ -113,19 +128,22 @@ Gerçek senaryo (kullanıcıdan, 28.08): 30 alt yüklenici saha personeli ama **
 Auth + roller (işveren/alt yüklenici ayrımı), saha/ekipman tanımlama, iş emri oluşturma/atama, durum takibi (backend + basit web panel)
 
 **Faz 2 — Saha Operasyonu (Mobil MVP)**
-Flutter uygulama: iş listesi, müdahale başlat/bitir, durum seçimi (Devam Edecek/Tamamlandı/N/A) + min. 3 foto zorunluluğu, malzeme girişi, kamera+GPS foto ekleme (≤2MB sıkıştırma), offline kuyruk
+Flutter uygulama (Alt Yüklenici tarafı): iş listesi, müdahale başlat/bitir, durum seçimi (Devam Edecek/Tamamlandı/N/A) + min. 3 foto zorunluluğu, malzeme girişi, kamera+GPS foto ekleme (≤2MB sıkıştırma), offline kuyruk, **arka planda ~1 dk'da bir konum gönderimi**
 
-**Faz 3 — Denetim + Raporlama**
-İşveren denetim kuyruğu (onay/red akışı + gerekçe + geçmiş), dashboard, SLA/performans raporları, export (PDF/Excel)
+**Faz 3 — Denetim + Raporlama + İşveren Mobil**
+İşveren denetim kuyruğu (onay/red akışı + gerekçe + geçmiş) **hem web hem mobil**, **Canlı Harita** (saha ekipleri konumu, web+mobil), dashboard, SLA/performans raporları, export (PDF/Excel)
 
 **Faz 4 — Gelişmiş**
-Push bildirimler, harita görünümü (saha/ekip konumları), tam offline senkronizasyon, red oranı/tekrarlayan arıza trend analizleri
+Push bildirimler, tam offline senkronizasyon, red oranı/tekrarlayan arıza trend analizleri
 
 ## 7. Açık Kararlar
 
-Hepsi kapandı — sıradaki adım Faz 1 implementasyonu.
+- [ ] Konum takibi ne zaman aktif olsun: uygulama açıkken sürekli mi, yoksa sadece aktif bir iş emri "Devam Edecek" durumundayken mi (pil tüketimi + gizlilik açısından fark yaratır)
+- [ ] KVKK: personel konum takibi kişisel veri sayılır — aydınlatma metni/personel onayı süreci gerekebilir, hukuki/operasyonel bir konu, teknik değil ama unutulmamalı
 
 **Karara bağlanmış**:
+- İşveren (Yönetici) mobil uygulamaya da kendi hesabıyla girer, onay/red işlemlerini oradan da yapabilir (web ile aynı API, `taraf`/`rol`'e göre farklı ekran)
+- Saha ekiplerinin canlı konumu — İşveren tarafında (web+mobil) haritada gösterilir, 1 dakikada bir güncellenir
 - Uygulama adı: **ABB Kontrol**
 - Backend = tek Nuxt 3 Nitro projesi (API+web panel), MySQL, foto depolama ayrı Hetzner Volume (bkz. Bölüm 4)
 - Checklist yok (MVP) — bunun yerine basit durum akışı: Devam Edecek / Tamamlandı (min. 3 foto zorunlu) / N/A → otomatik Onay Bekliyor → sadece Yönetici onay/red verir (bkz. Bölüm 2). Hem asansör hem yürüyen merdiven için aynı akış.
