@@ -1,9 +1,19 @@
 <script setup lang="ts">
 import type { ReportsData } from '~/types'
+import { PERIOD_LABELS, periodQueryString, type Period } from '~/utils/dateRange'
 
 const { apiFetch } = useApi()
 
-const { data, pending, error, refresh } = await useAsyncData('reports', () => apiFetch<ReportsData>('/api/reports'))
+const periodFilter = ref<Period>('')
+
+const { data, pending, error, refresh } = await useAsyncData(
+  'reports',
+  () => {
+    const qs = periodQueryString(periodFilter.value)
+    return apiFetch<ReportsData>(`/api/reports${qs ? `?${qs}` : ''}`)
+  },
+  { watch: [periodFilter] },
+)
 const exporting = ref(false)
 
 function fmtSaat(v: number | null) {
@@ -20,7 +30,8 @@ async function exportExcel() {
   if (!data.value) return
   exporting.value = true
   try {
-    await downloadExcel(`abb-kontrol-raporlar-${new Date().toISOString().slice(0, 10)}.xlsx`, [
+    const periodSlug = periodFilter.value || 'tum-zamanlar'
+    await downloadExcel(`abb-kontrol-raporlar-${periodSlug}-${new Date().toISOString().slice(0, 10)}.xlsx`, [
       {
         name: 'Personel Performansı',
         headers: ['Personel', 'Atanan İş', 'Onaylanan', 'Reddedilen', 'Ort. Müdahale (sa)', 'Ort. Çözüm (sa)'],
@@ -55,6 +66,9 @@ async function exportExcel() {
     <div class="page-header">
       <h1>Raporlar</h1>
       <div style="display: flex; gap: 8px">
+        <select v-model="periodFilter" style="width: auto">
+          <option v-for="(label, key) in PERIOD_LABELS" :key="key" :value="key">{{ label }}</option>
+        </select>
         <button class="btn" @click="refresh()">Yenile</button>
         <button class="btn btn-primary" :disabled="!data || exporting" @click="exportExcel">
           {{ exporting ? 'Hazırlanıyor...' : 'Excel olarak indir' }}

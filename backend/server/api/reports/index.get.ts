@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm'
+import { eq, and, gte, lte } from 'drizzle-orm'
 import { requireRole } from '../../utils/auth'
 import { useDb } from '../../database/client'
 import { users, workOrders, workOrderReviews, workOrderMaterials, materials } from '../../database/schema'
@@ -18,25 +18,48 @@ export default defineEventHandler(async (event) => {
   await requireRole(event, ['yonetici', 'denetci'])
   const db = useDb()
 
+  const query = getQuery(event)
+  const from = query.from ? new Date(query.from as string) : undefined
+  const to = query.to ? new Date(query.to as string) : undefined
+  const validFrom = from && !Number.isNaN(from.getTime()) ? from : undefined
+  const validTo = to && !Number.isNaN(to.getTime()) ? to : undefined
+
+  const workOrderDateConditions = []
+  if (validFrom) workOrderDateConditions.push(gte(workOrders.reportedAt, validFrom))
+  if (validTo) workOrderDateConditions.push(lte(workOrders.reportedAt, validTo))
+
+  const reviewDateConditions = []
+  if (validFrom) reviewDateConditions.push(gte(workOrderReviews.incelenenZaman, validFrom))
+  if (validTo) reviewDateConditions.push(lte(workOrderReviews.incelenenZaman, validTo))
+
   const [altYuklenicilar, allWorkOrders, allReviewsRaw, materialUsage] = await Promise.all([
     db
       .select({ id: users.id, ad: users.ad })
       .from(users)
       .where(eq(users.taraf, 'alt_yuklenici')),
-    db.select().from(workOrders),
-    db
-      .select({ sonuc: workOrderReviews.sonuc, atananUserId: workOrders.atananUserId })
-      .from(workOrderReviews)
-      .innerJoin(workOrders, eq(workOrders.id, workOrderReviews.workOrderId)),
-    db
-      .select({
-        materialId: workOrderMaterials.materialId,
-        ad: materials.ad,
-        birim: materials.birim,
-        miktar: workOrderMaterials.miktar,
-      })
-      .from(workOrderMaterials)
-      .innerJoin(materials, eq(materials.id, workOrderMaterials.materialId)),
+    workOrderDateConditions.length
+      ? db.select().from(workOrders).where(and(...workOrderDateConditions))
+      : db.select().from(workOrders),
+    (() => {
+      const q = db
+        .select({ sonuc: workOrderReviews.sonuc, atananUserId: workOrders.atananUserId })
+        .from(workOrderReviews)
+        .innerJoin(workOrders, eq(workOrders.id, workOrderReviews.workOrderId))
+      return reviewDateConditions.length ? q.where(and(...reviewDateConditions)) : q
+    })(),
+    (() => {
+      const q = db
+        .select({
+          materialId: workOrderMaterials.materialId,
+          ad: materials.ad,
+          birim: materials.birim,
+          miktar: workOrderMaterials.miktar,
+        })
+        .from(workOrderMaterials)
+        .innerJoin(materials, eq(materials.id, workOrderMaterials.materialId))
+        .innerJoin(workOrders, eq(workOrders.id, workOrderMaterials.workOrderId))
+      return workOrderDateConditions.length ? q.where(and(...workOrderDateConditions)) : q
+    })(),
   ])
 
   // --- Personel performansı ---

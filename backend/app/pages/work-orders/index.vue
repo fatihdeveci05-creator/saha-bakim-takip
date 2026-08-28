@@ -1,16 +1,23 @@
 <script setup lang="ts">
 import type { WorkOrder, Equipment, Site, Durum, AppUser } from '~/types'
 import { DURUM_LABELS } from '~/types'
+import { PERIOD_LABELS, periodQueryString, type Period } from '~/utils/dateRange'
 
 const { apiFetch } = useApi()
 const auth = useAuth()
 
 const durumFilter = ref<Durum | ''>('')
+const periodFilter = ref<Period>('')
 
 const { data: items, pending, error, refresh } = await useAsyncData(
   'work-orders-list',
-  () => apiFetch<WorkOrder[]>(`/api/work-orders${durumFilter.value ? `?durum=${durumFilter.value}` : ''}`),
-  { watch: [durumFilter] },
+  () => {
+    const params = new URLSearchParams(periodQueryString(periodFilter.value))
+    if (durumFilter.value) params.set('durum', durumFilter.value)
+    const qs = params.toString()
+    return apiFetch<WorkOrder[]>(`/api/work-orders${qs ? `?${qs}` : ''}`)
+  },
+  { watch: [durumFilter, periodFilter] },
 )
 
 const { data: equipmentList } = await useAsyncData('equipment-lookup', () => apiFetch<Equipment[]>('/api/equipment'))
@@ -76,6 +83,9 @@ async function submit() {
     <div class="page-header">
       <h1>İş Emirleri</h1>
       <div style="display: flex; gap: 8px">
+        <select v-model="periodFilter" style="width: auto">
+          <option v-for="(label, key) in PERIOD_LABELS" :key="key" :value="key">{{ label }}</option>
+        </select>
         <select v-model="durumFilter" style="width: auto">
           <option value="">Tüm durumlar</option>
           <option v-for="(label, key) in DURUM_LABELS" :key="key" :value="key">{{ label }}</option>
