@@ -4,6 +4,7 @@ import { requireAuth } from '../../utils/auth'
 import { useDb } from '../../database/client'
 import { workOrders, workOrderTimeline, equipment, sites, users, isEmriTipEnum } from '../../database/schema'
 import { notifyUser, notifyYoneticiler } from '../../utils/notify'
+import { getUserTeamId } from '../../utils/teamScope'
 
 const TIP_LABELS: Record<string, string> = { bakim: 'Bakım', ariza: 'Arıza', kontrol: 'Kontrol' }
 
@@ -54,12 +55,18 @@ export default defineEventHandler(async (event) => {
 
   if (atananUserId) {
     const [assignee] = await db
-      .select({ id: users.id, taraf: users.taraf, aktif: users.aktif })
+      .select({ id: users.id, taraf: users.taraf, aktif: users.aktif, takimId: users.takimId })
       .from(users)
       .where(eq(users.id, atananUserId))
       .limit(1)
     if (!assignee || assignee.taraf !== 'alt_yuklenici' || !assignee.aktif) {
       throw createError({ statusCode: 400, statusMessage: 'Atanan kullanıcı geçersiz (aktif alt yüklenici personeli olmalı)' })
+    }
+    if (payload.rol === 'sorumlu') {
+      const ownTeamId = await getUserTeamId(Number(payload.sub))
+      if (!ownTeamId || assignee.takimId !== ownTeamId) {
+        throw createError({ statusCode: 403, statusMessage: 'Sadece kendi ekibinizdeki personele atama yapabilirsiniz' })
+      }
     }
   }
 

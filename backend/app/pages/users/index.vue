@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import type { AppUser } from '~/types'
+import type { AppUser, Team } from '~/types'
 
 const { apiFetch } = useApi()
 const { data: items, pending, error, refresh } = await useAsyncData('users', () => apiFetch<AppUser[]>('/api/users'))
+const { data: teamList } = await useAsyncData('teams-lookup', () => apiFetch<Team[]>('/api/teams'))
+const teamNameById = computed(() => new Map((teamList.value ?? []).map((t) => [t.id, t.ad])))
 
 const showForm = ref(false)
 const form = reactive({
@@ -12,6 +14,7 @@ const form = reactive({
   password: '',
   taraf: 'alt_yuklenici' as 'alt_yuklenici' | 'isveren',
   rol: 'ariza_ekibi',
+  takimId: '',
 })
 const formError = ref('')
 const saving = ref(false)
@@ -33,6 +36,7 @@ watch(
   () => form.taraf,
   (taraf) => {
     form.rol = rolOptions[taraf]?.[0]?.value ?? ''
+    if (taraf === 'isveren') form.takimId = ''
   },
 )
 
@@ -49,12 +53,14 @@ async function submit() {
         password: form.password,
         taraf: form.taraf,
         rol: form.rol,
+        takimId: form.takimId ? Number(form.takimId) : undefined,
       },
     })
     form.ad = ''
     form.email = ''
     form.telefon = ''
     form.password = ''
+    form.takimId = ''
     showForm.value = false
     await refresh()
   } catch (err) {
@@ -66,6 +72,11 @@ async function submit() {
 
 async function toggleAktif(u: AppUser) {
   await apiFetch(`/api/users/${u.id}`, { method: 'PATCH', body: { aktif: !u.aktif } })
+  await refresh()
+}
+
+async function changeTeam(u: AppUser, takimId: string) {
+  await apiFetch(`/api/users/${u.id}`, { method: 'PATCH', body: { takimId: takimId ? Number(takimId) : null } })
   await refresh()
 }
 </script>
@@ -102,6 +113,13 @@ async function toggleAktif(u: AppUser) {
           </select>
         </div>
       </div>
+      <div v-if="form.taraf === 'alt_yuklenici'" class="field">
+        <label>Takım (isteğe bağlı)</label>
+        <select v-model="form.takimId">
+          <option value="">— Takım yok —</option>
+          <option v-for="t in teamList" :key="t.id" :value="t.id">{{ t.ad }}</option>
+        </select>
+      </div>
       <button class="btn btn-primary" type="submit" :disabled="saving">Kaydet</button>
     </form>
 
@@ -118,6 +136,7 @@ async function toggleAktif(u: AppUser) {
             <th>E-posta</th>
             <th>Taraf</th>
             <th>Rol</th>
+            <th>Takım</th>
             <th>Durum</th>
             <th></th>
           </tr>
@@ -129,6 +148,18 @@ async function toggleAktif(u: AppUser) {
             <td>{{ u.email }}</td>
             <td>{{ u.taraf === 'isveren' ? 'İşveren' : 'Alt Yüklenici' }}</td>
             <td>{{ u.rol }}</td>
+            <td>
+              <select
+                v-if="u.taraf === 'alt_yuklenici'"
+                :value="u.takimId ?? ''"
+                style="width: auto"
+                @change="changeTeam(u, ($event.target as HTMLSelectElement).value)"
+              >
+                <option value="">— Takım yok —</option>
+                <option v-for="t in teamList" :key="t.id" :value="t.id">{{ t.ad }}</option>
+              </select>
+              <span v-else class="muted">—</span>
+            </td>
             <td>
               <span class="badge" :class="u.aktif ? 'badge-onaylandi' : 'badge-reddedildi'">{{ u.aktif ? 'Aktif' : 'Pasif' }}</span>
             </td>

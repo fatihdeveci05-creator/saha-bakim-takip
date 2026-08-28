@@ -4,6 +4,7 @@ import { requireRole } from '../../../utils/auth'
 import { useDb } from '../../../database/client'
 import { workOrders, workOrderTimeline, users } from '../../../database/schema'
 import { notifyUser } from '../../../utils/notify'
+import { getUserTeamId } from '../../../utils/teamScope'
 
 const bodySchema = z.object({
   atananUserId: z.number().int(),
@@ -27,12 +28,18 @@ export default defineEventHandler(async (event) => {
   }
 
   const [assignee] = await db
-    .select({ id: users.id, taraf: users.taraf, aktif: users.aktif })
+    .select({ id: users.id, taraf: users.taraf, aktif: users.aktif, takimId: users.takimId })
     .from(users)
     .where(eq(users.id, body.atananUserId))
     .limit(1)
   if (!assignee || assignee.taraf !== 'alt_yuklenici' || !assignee.aktif) {
     throw createError({ statusCode: 400, statusMessage: 'Atanan kullanıcı geçersiz (aktif alt yüklenici personeli olmalı)' })
+  }
+  if (payload.rol === 'sorumlu') {
+    const ownTeamId = await getUserTeamId(Number(payload.sub))
+    if (!ownTeamId || assignee.takimId !== ownTeamId) {
+      throw createError({ statusCode: 403, statusMessage: 'Sadece kendi ekibinizdeki personele atama yapabilirsiniz' })
+    }
   }
 
   await db.update(workOrders).set({ atananUserId: body.atananUserId }).where(eq(workOrders.id, id))
