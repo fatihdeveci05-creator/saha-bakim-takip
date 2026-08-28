@@ -1,18 +1,18 @@
 <script setup lang="ts">
 import type { ReportsData } from '~/types'
-import { PERIOD_LABELS, periodQueryString, type Period } from '~/utils/dateRange'
+import { PERIOD_LABELS } from '~/utils/dateRange'
 
 const { apiFetch } = useApi()
 
-const periodFilter = ref<Period>('')
+const { period: periodFilter, customFrom, customTo, queryString } = useDateFilter()
 
 const { data, pending, error, refresh } = await useAsyncData(
   'reports',
   () => {
-    const qs = periodQueryString(periodFilter.value)
+    const qs = queryString.value
     return apiFetch<ReportsData>(`/api/reports${qs ? `?${qs}` : ''}`)
   },
-  { watch: [periodFilter] },
+  { watch: [queryString] },
 )
 const exporting = ref(false)
 
@@ -30,7 +30,8 @@ async function exportExcel() {
   if (!data.value) return
   exporting.value = true
   try {
-    const periodSlug = periodFilter.value || 'tum-zamanlar'
+    const periodSlug =
+      periodFilter.value === 'ozel' ? `${customFrom.value || 'bas'}_${customTo.value || 'son'}` : periodFilter.value || 'tum-zamanlar'
     await downloadExcel(`abb-kontrol-raporlar-${periodSlug}-${new Date().toISOString().slice(0, 10)}.xlsx`, [
       {
         name: 'Personel Performansı',
@@ -65,10 +66,15 @@ async function exportExcel() {
   <div>
     <div class="page-header">
       <h1>Raporlar</h1>
-      <div style="display: flex; gap: 8px">
+      <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap">
         <select v-model="periodFilter" style="width: auto">
           <option v-for="(label, key) in PERIOD_LABELS" :key="key" :value="key">{{ label }}</option>
         </select>
+        <template v-if="periodFilter === 'ozel'">
+          <input v-model="customFrom" type="date" style="width: auto" />
+          <span class="muted">—</span>
+          <input v-model="customTo" type="date" style="width: auto" />
+        </template>
         <button class="btn" @click="refresh()">Yenile</button>
         <button class="btn btn-primary" :disabled="!data || exporting" @click="exportExcel">
           {{ exporting ? 'Hazırlanıyor...' : 'Excel olarak indir' }}

@@ -1,23 +1,32 @@
 <script setup lang="ts">
 import type { WorkOrder, Equipment, Site, Durum, AppUser } from '~/types'
 import { DURUM_LABELS } from '~/types'
-import { PERIOD_LABELS, periodQueryString, type Period } from '~/utils/dateRange'
+import { PERIOD_LABELS } from '~/utils/dateRange'
 
 const { apiFetch } = useApi()
 const auth = useAuth()
+const route = useRoute()
+const router = useRouter()
 
-const durumFilter = ref<Durum | ''>('')
-const periodFilter = ref<Period>('')
+const { period: periodFilter, customFrom, customTo, queryString } = useDateFilter()
+const durumFilter = ref<Durum | ''>((route.query.durum as Durum) || '')
+
+watch(durumFilter, () => {
+  const query = { ...route.query }
+  if (durumFilter.value) query.durum = durumFilter.value
+  else delete query.durum
+  router.replace({ query })
+})
 
 const { data: items, pending, error, refresh } = await useAsyncData(
   'work-orders-list',
   () => {
-    const params = new URLSearchParams(periodQueryString(periodFilter.value))
+    const params = new URLSearchParams(queryString.value)
     if (durumFilter.value) params.set('durum', durumFilter.value)
     const qs = params.toString()
     return apiFetch<WorkOrder[]>(`/api/work-orders${qs ? `?${qs}` : ''}`)
   },
-  { watch: [durumFilter, periodFilter] },
+  { watch: [durumFilter, queryString] },
 )
 
 const { data: equipmentList } = await useAsyncData('equipment-lookup', () => apiFetch<Equipment[]>('/api/equipment'))
@@ -82,10 +91,15 @@ async function submit() {
   <div>
     <div class="page-header">
       <h1>İş Emirleri</h1>
-      <div style="display: flex; gap: 8px">
+      <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap">
         <select v-model="periodFilter" style="width: auto">
           <option v-for="(label, key) in PERIOD_LABELS" :key="key" :value="key">{{ label }}</option>
         </select>
+        <template v-if="periodFilter === 'ozel'">
+          <input v-model="customFrom" type="date" style="width: auto" />
+          <span class="muted">—</span>
+          <input v-model="customTo" type="date" style="width: auto" />
+        </template>
         <select v-model="durumFilter" style="width: auto">
           <option value="">Tüm durumlar</option>
           <option v-for="(label, key) in DURUM_LABELS" :key="key" :value="key">{{ label }}</option>

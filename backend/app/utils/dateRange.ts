@@ -1,10 +1,11 @@
-export type Period = '' | 'bugun' | 'hafta' | 'ay'
+export type Period = '' | 'bugun' | 'hafta' | 'ay' | 'ozel'
 
 export const PERIOD_LABELS: Record<Period, string> = {
   '': 'Tüm Zamanlar',
   bugun: 'Bugün',
   hafta: 'Bu Hafta',
   ay: 'Bu Ay',
+  ozel: 'Tarih Aralığı Seç',
 }
 
 /** Seçilen döneme karşılık gelen { from, to } ISO aralığını döner (period='' ise ikisi de undefined). */
@@ -28,10 +29,26 @@ export function periodRange(period: Period): { from?: string; to?: string } {
   return {}
 }
 
-export function periodQueryString(period: Period) {
-  const { from, to } = periodRange(period)
+/** "YYYY-MM-DD" (input[type=date] değeri) → günün başlangıcı/sonu ISO string'i. */
+export function dateInputToIsoStart(value: string) {
+  return value ? new Date(`${value}T00:00:00`).toISOString() : undefined
+}
+
+export function dateInputToIsoEnd(value: string) {
+  return value ? new Date(`${value}T23:59:59.999`).toISOString() : undefined
+}
+
+export function periodQueryString(period: Period, customFrom = '', customTo = '') {
   const params = new URLSearchParams()
-  if (from) params.set('from', from)
-  if (to) params.set('to', to)
+  if (period === 'ozel') {
+    const from = dateInputToIsoStart(customFrom)
+    const to = dateInputToIsoEnd(customTo)
+    if (from) params.set('from', from)
+    if (to) params.set('to', to)
+  } else {
+    const { from, to } = periodRange(period)
+    if (from) params.set('from', from)
+    if (to) params.set('to', to)
+  }
   return params.toString()
 }
