@@ -19,8 +19,7 @@ Takip edilecek temel şeyler:
 
 | Taraf | Rol | Yetki |
 |---|---|---|
-| İşveren | **Yönetici** | Tüm sahalar/ekipmanlar/kayıtlar; tüm denetim geçmişi; raporlar; **hem web panelden hem mobil uygulamadan** onay/red verebilir, saha ekiplerinin canlı konumunu haritada görür |
-| İşveren | **Denetçi (Sorumlu)** | Kendine bağlı saha(lar); alt yüklenicinin girdiği iş emirlerini inceleme, onay/red (gerekçeli), not düşme |
+| İşveren | **Yönetici** | Tüm sahalar/ekipmanlar/kayıtlar; tüm denetim geçmişi; raporlar; **hem web panelden hem mobil uygulamadan** onay/red verebilir, saha ekiplerinin canlı konumunu haritada görür — MVP'de İşveren tarafında **tek rol bu** |
 | Alt Yüklenici | **Sorumlu** | Kendi ekiplerini yönetir, iş atar, kendi sahasının durumunu ve reddedilen işlerini görür |
 | Alt Yüklenici | **Arıza Ekibi** | Arıza bildirir, müdahale başlat/bitir, malzeme/foto+konum ekler |
 | Alt Yüklenici | **Bakım Ekibi** | Planlı bakım işini yürütür, malzeme + foto+konum ekler, durumu günceller |
