@@ -2,7 +2,7 @@
 
 Nuxt 4 (Nitro) tabanlı tek proje: `server/api/` = API, `app/pages/` = işveren web paneli (bkz. kök `PLAN.md`). Web panel SPA modunda (`ssr:false`), token'lar localStorage'da tutulur, giriş sadece `taraf=isveren` kullanıcılarına açık.
 
-**Web panel sayfaları**: Dashboard, Denetim Kuyruğu (onay/red), İş Emirleri, Canlı Harita (Leaflet, 1 dk'da bir yenilenir), Sahalar, Ekipmanlar, Ekipler, Kullanıcılar, Raporlar (personel performansı, red oranı, malzeme tüketimi + tek tıkla çok sayfalı Excel export — `exceljs` ile üretilir, `xlsx` paketi düzeltmesi olmayan bir güvenlik açığı içerdiği için tercih edilmedi).
+**Web panel sayfaları**: Dashboard, Denetim Kuyruğu (onay/red), İş Emirleri (**+ Yeni İş Emri** formu — sadece `yonetici`, ekipman+personel seçip bakım/kontrol/arıza atar), Canlı Harita (Leaflet, 1 dk'da bir yenilenir), Sahalar, Ekipmanlar, Ekipler, Kullanıcılar, Raporlar (personel performansı, red oranı, malzeme tüketimi + tek tıkla çok sayfalı Excel export — `exceljs` ile üretilir, `xlsx` paketi düzeltmesi olmayan bir güvenlik açığı içerdiği için tercih edilmedi).
 
 `server/middleware/cors.ts`: `/api/*` ve `/uploads/*` için CORS header'ları ekler — native mobil derlemeler için gereksiz ama Flutter uygulamasını web/desktop hedefiyle yerelde test ederken gerekli (bkz. `../mobile/README.md`).
 
@@ -61,7 +61,7 @@ npm run dev
 - `GET /api/auth/me` — `Authorization: Bearer <accessToken>` → mevcut kullanıcı
 - `GET /api/health` — sağlık kontrolü
 
-**Kullanıcılar** (`yonetici`/`denetci` görebilir, sadece `yonetici` oluşturup/düzenleyebilir):
+**Kullanıcılar** (`yonetici`/`denetci` tüm kullanıcıları görür; `sorumlu` sadece alt yüklenici ekip listesini görür — iş atayabilmesi için; sadece `yonetici` oluşturup/düzenleyebilir):
 - `GET /api/users`, `GET /api/users/:id`, `POST /api/users`, `PATCH /api/users/:id`
 
 **Ekipler** (herkes görebilir, sadece `yonetici` oluşturup/düzenleyebilir):

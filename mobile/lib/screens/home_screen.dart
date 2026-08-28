@@ -8,6 +8,7 @@ import '../models/equipment.dart';
 import '../models/site.dart';
 import '../models/work_order.dart';
 import '../widgets/status_badge.dart';
+import 'assign_work_order_screen.dart';
 import 'notifications_screen.dart';
 import 'report_ariza_screen.dart';
 import 'work_order_detail_screen.dart';
@@ -141,13 +142,33 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                 children: _Tab.values.map((tab) => _WorkOrderList(items: _filter(tab), equipmentLabel: _equipmentLabel)).toList(),
               ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        icon: const Icon(Icons.report_problem_outlined),
-        label: const Text('Arıza Bildir'),
-        onPressed: () async {
-          final created = await Navigator.of(context).push<bool>(MaterialPageRoute(builder: (_) => const ReportArizaScreen()));
-          if (created == true) _load();
-        },
+      floatingActionButton: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          // Sadece "sorumlu" ekibindeki birine planlı bakım/kontrol işi atayabilir.
+          if (auth.currentUser?.rol == 'sorumlu') ...[
+            FloatingActionButton.extended(
+              heroTag: 'assign',
+              icon: const Icon(Icons.assignment_add),
+              label: const Text('İş Ata'),
+              onPressed: () async {
+                final created = await Navigator.of(context).push<bool>(MaterialPageRoute(builder: (_) => const AssignWorkOrderScreen()));
+                if (created == true) _load();
+              },
+            ),
+            const SizedBox(height: 12),
+          ],
+          FloatingActionButton.extended(
+            heroTag: 'ariza',
+            icon: const Icon(Icons.report_problem_outlined),
+            label: const Text('Arıza Bildir'),
+            onPressed: () async {
+              final created = await Navigator.of(context).push<bool>(MaterialPageRoute(builder: (_) => const ReportArizaScreen()));
+              if (created == true) _load();
+            },
+          ),
+        ],
       ),
     );
   }

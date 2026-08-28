@@ -5,6 +5,8 @@ Flutter uygulaması, tek kod tabanı — `taraf`'a göre farklı ekran seti:
 - **Alt yüklenici saha ekipleri** (Faz 2): giriş, iş listem (bugün/bekleyen/tamamlanan/reddedilen,
   her sekmede kayıt sayısı), iş emri detayı (durum akışı, kamera+GPS foto, malzeme girişi, zaman
   çizelgesi), arıza bildir, ~1 dk'da bir konum gönderimi.
+- **Sorumlu** (alt yüklenici ekip lideri): yukarıdakilere ek olarak **İş Ata** ekranı — ekibindeki
+  birine bakım/kontrol/arıza işi atayabilir (saha/ekipman/personel/öncelik seçimi).
 - **İşveren** (Faz 3): denetim kuyruğu (onay/red, aynı detay ekranı üzerinden), canlı harita
   (flutter_map + OSM, saha ekiplerinin konumu).
 - **Bildirimler** (Faz 4, uygulama içi): her iki tarafta da AppBar'da zil ikonu + okunmamış sayısı
@@ -87,6 +89,7 @@ PLAN.md'nin kapsamındaki şu parça **henüz yok**:
 - `screens/work_order_detail_screen.dart` — hem alt yüklenici (durum/foto/malzeme/N-A) hem
   işveren (onay/red) için ortak detay ekranı; hangi kontrollerin göründüğü role/duruma göre belirlenir
 - `screens/report_ariza_screen.dart` — self-servis arıza bildirimi
+- `screens/assign_work_order_screen.dart` — `sorumlu` için iş atama (bakım/kontrol/arıza)
 - `screens/employer_home_screen.dart` — işveren: denetim kuyruğu (arka plandan dönünce yenilenir) + canlı harita
 - `screens/notifications_screen.dart` — bildirim listesi + `NotificationBellButton` (AppBar rozeti)
 - `services/location_service.dart` — periyodik konum gönderimi
