@@ -13,6 +13,7 @@ import '../models/equipment.dart';
 import '../models/site.dart';
 import '../models/user_location.dart';
 import '../models/work_order.dart';
+import 'assign_work_order_screen.dart';
 import 'notifications_screen.dart';
 import 'work_order_detail_screen.dart';
 
@@ -57,6 +58,13 @@ class _EmployerHomeScreenState extends State<EmployerHomeScreen> with SingleTick
         ],
       ),
       body: TabBarView(controller: _tabController, children: const [_DenetimKuyruguTab(), _CanliHaritaTab()]),
+      floatingActionButton: auth.currentUser?.rol == 'yonetici'
+          ? FloatingActionButton.extended(
+              icon: const Icon(Icons.assignment_add),
+              label: const Text('İş Ata'),
+              onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AssignWorkOrderScreen())),
+            )
+          : null,
     );
   }
 }
