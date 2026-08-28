@@ -22,12 +22,17 @@ Takip edilecek temel şeyler:
 | İşveren | **Denetçi (Sorumlu)** | Kendine bağlı saha(lar); alt yüklenicinin girdiği iş emirlerini inceleme, onay/red (gerekçeli), not düşme |
 | Alt Yüklenici | **Sorumlu** | Kendi ekiplerini yönetir, iş atar, kendi sahasının durumunu ve reddedilen işlerini görür |
 | Alt Yüklenici | **Arıza Ekibi** | Arıza bildirir, müdahale başlat/bitir, malzeme/foto+konum ekler |
-| Alt Yüklenici | **Bakım Ekibi** | Planlı bakım işini yürütür, checklist + malzeme + foto+konum ekler |
+| Alt Yüklenici | **Bakım Ekibi** | Planlı bakım işini yürütür, malzeme + foto+konum ekler, durumu günceller |
 | Alt Yüklenici | **Kontrol Ekibi** | Kontrol/inceleme kaydı girer |
 
-**Denetim akışı**: Alt yüklenici bir iş emrini "tamamlandı" yapınca durum **"denetim bekliyor"**ya düşer. İşveren tarafı (Yönetici/Denetçi) fotoları + GPS konumunu + zaman damgalarını inceler → **onaylar** ya da **gerekçeyle reddeder**.
-- Onaylanırsa iş emri "onaylandı" ile kapanır.
-- Reddedilirse iş emri **"reddedildi" durumunda, orijinal fotoları/verisiyle olduğu gibi kalır — üzerine yazılmaz** (denetim/tarihçe kaydı olarak korunur). Aynı anda, aynı ekipman için **yeni bir iş emri** açılır (`parent_work_order_id` ile reddedilen işe bağlı), alt yükleniciye tekrar atanır ve düzeltme baştan, temiz bir kayıt olarak girilir.
+**İş emri durum akışı (MVP — checklist yok, basit durum makinesi, asansör ve yürüyen merdiven için aynı)**:
+
+Alt yüklenici personeli bir iş emrinde şu durumlardan birini seçer: **Devam Edecek** / **Tamamlandı** / **N/A**.
+- **Tamamlandı** seçilebilmesi için **en az 3 fotoğraf eklenmiş olması zorunlu** (uygulama bunu zorlar, foto yoksa "Tamamlandı" seçeneği kilitli kalır).
+- Tamamlandı + fotoğraflar girilince durum otomatik olarak **"Onay Bekliyor"**ya geçer — bu personelin seçtiği bir durum değil, sistemin verdiği bir ara durumdur.
+- **Onay Bekliyor**daki bir işi sadece **Yönetici** (İşveren tarafı) onaylayabilir veya reddedebilir (gerekçeli). MVP'de İşveren tarafında onay yetkisi sadece Yönetici'de — ayrı bir Denetçi rolüne şimdilik gerek yok, ihtiyaç çıkarsa sonra eklenir.
+- Onaylanırsa iş emri **"Onaylandı"** ile kapanır.
+- Reddedilirse iş emri **"Reddedildi" durumunda, orijinal fotoları/verisiyle olduğu gibi kalır — üzerine yazılmaz** (denetim/tarihçe kaydı olarak korunur). Aynı anda, aynı ekipman için **yeni bir iş emri** açılır (`parent_work_order_id` ile reddedilen işe bağlı), alt yükleniciye tekrar atanır ve düzeltme baştan, temiz bir kayıt olarak girilir.
 - Onay/red geçmişi (kim, ne zaman, ne dedi) ayrıca saklanır.
 
 Rol bazlı görünürlük: alt yüklenici sadece kendi işlerini/sahasını görür, işveren tüm alt yüklenici verisini görür ama kendisi saha kaydı girmez — sadece denetler.
@@ -38,7 +43,8 @@ Rol bazlı görünürlük: alt yüklenici sadece kendi işlerini/sahasını gör
 - **teams** — id, ad, tip (arıza/bakım/kontrol), sorumlu_user_id (alt yüklenici tarafında)
 - **sites** — id, ad, adres, konum (lat/lng), denetçi_user_id (işveren tarafından sorumlu)
 - **equipment** — id, site_id, tip (asansör/yürüyen merdiven), marka, model, seri_no, kurulum_tarihi
-- **work_orders** (iş emri) — id, equipment_id, tip (bakım/arıza/kontrol), **atanan_user_id (bireysel personel, ekip değil)**, öncelik, durum (bekliyor/devam/tamamlandı/**denetim_bekliyor**/**onaylandı**/**reddedildi**), açıklama, **`parent_work_order_id`** (reddedilip yeniden açılan işlerde önceki kayda referans), ve zaman damgaları:
+- **work_orders** (iş emri) — id, equipment_id, tip (bakım/arıza/kontrol), **atanan_user_id (bireysel personel, ekip değil)**, öncelik, durum (**bekliyor / devam_edecek / tamamlandı / onay_bekliyor / onaylandı / reddedildi / na**), açıklama, **`parent_work_order_id`** (reddedilip yeniden açılan işlerde önceki kayda referans), ve zaman damgaları:
+  - **Kural**: durum `tamamlandı`ya geçemez, eğer ilişkili `work_order_photos` sayısı < 3 ise (API validasyonu) — geçince otomatik `onay_bekliyor`ya döner
   - `occurred_at` — arızanın oluştuğu/fark edildiği zaman (varsa)
   - `reported_at` (cihazdan gelen) + `reported_at_server` (sunucunun aldığı an) — ikisi ayrı tutulur, cihaz saati kurcalanmışsa fark edilebilir
   - `response_started_at` — müdahalenin başladığı zaman → **müdahale süresi** = bu − reported_at
@@ -46,8 +52,8 @@ Rol bazlı görünürlük: alt yüklenici sadece kendi işlerini/sahasını gör
 - **work_order_reviews** (denetim kaydı) — id, work_order_id, reviewer_user_id, sonuç (onay/red), gerekçe, incelenen_zaman — **her denetim turu ayrı satır, geçmiş tutulur**
 - **materials** — id, ad, birim, stok_adedi
 - **work_order_materials** — work_order_id, material_id, miktar
-- **work_order_photos** — id, work_order_id, url, **gps_lat/lng (zorunlu, kamera çekimiyle otomatik alınır)**, çekim_zamanı, yükleyen
-- **checklists** / **checklist_items** — ekipman tipine göre standart kontrol maddeleri (kontrol ekibi için)
+- **work_order_photos** — id, work_order_id, url, **gps_lat/lng (zorunlu, kamera çekimiyle otomatik alınır)**, çekim_zamanı, yükleyen, boyut_kb (**mobilde yüklemeden önce ≤2MB'a sıkıştırılır**)
+- ~~**checklists** / **checklist_items**~~ — **MVP'de yok**, faz sonrası opsiyonel (şimdilik "Tamamlandı" durumu + min. 3 foto yeterli kanıt kabul ediliyor)
 - **work_order_timeline** — durum değişikliği geçmişi, notlar
 - **notifications** — atama/SLA aşımı/denetim sonucu bildirimleri
 
@@ -85,17 +91,17 @@ Gerçek senaryo (kullanıcıdan, 28.08): 30 alt yüklenici saha personeli ama **
 **Mobil (Alt Yüklenici saha ekipleri):**
 - Giriş / rol bazlı ana ekran
 - Günlük iş listem (bugün/bekleyen/tamamlanan/**reddedilen**)
-- İş emri detayı (ekipman bilgisi, geçmiş, checklist)
+- İş emri detayı (ekipman bilgisi, geçmiş) + durum seç: Devam Edecek / Tamamlandı / N/A (**Tamamlandı, en az 3 foto eklenmeden seçilemez**)
 - Müdahale başlat/bitir (süre otomatik başlar)
 - Malzeme kullanım girişi
-- Fotoğraf ekleme (kamera + otomatik GPS konumu — galeriden seçim yok)
+- Fotoğraf ekleme (kamera + otomatik GPS konumu — galeriden seçim yok, yüklemeden önce ≤2MB'a sıkıştırılır)
 - Arıza bildir (yeni arıza kaydı aç, bildirim zamanı otomatik)
 - Reddedilen işlerim listesi → her biri, üzerinden açılan **yeni iş emrine** bağlantı (eski kayıt salt-okunur kalır, düzeltme yeni kayıt olarak girilir)
 - Bildirimler (atama, red gerekçesi)
 
 **Web (İşveren — Yönetici/Denetçi):**
-- Dashboard (açık iş sayısı, denetim bekleyen sayısı, ortalama müdahale/çözüm süresi, geciken işler)
-- **Denetim kuyruğu** — "denetim bekliyor" durumundaki işler, foto+konum+zaman damgalarıyla inceleme, onay/red
+- Dashboard (açık iş sayısı, onay bekleyen sayısı, ortalama müdahale/çözüm süresi, geciken işler)
+- **Denetim kuyruğu** — "Onay Bekliyor" durumundaki işler, foto (min 3)+konum+zaman damgalarıyla inceleme, onay/red (**sadece Yönetici rolü**)
 - İş emri detayı + denetim geçmişi (kim ne zaman ne karar verdi)
 - Saha/ekipman yönetimi (tanımlama, alt yüklenici bunu göremez/değiştiremez)
 - Kullanıcı/ekip yönetimi (her iki taraf da işveren tarafından oluşturulur)
@@ -107,7 +113,7 @@ Gerçek senaryo (kullanıcıdan, 28.08): 30 alt yüklenici saha personeli ama **
 Auth + roller (işveren/alt yüklenici ayrımı), saha/ekipman tanımlama, iş emri oluşturma/atama, durum takibi (backend + basit web panel)
 
 **Faz 2 — Saha Operasyonu (Mobil MVP)**
-Flutter uygulama: iş listesi, müdahale başlat/bitir, checklist, malzeme girişi, kamera+GPS foto ekleme, offline kuyruk
+Flutter uygulama: iş listesi, müdahale başlat/bitir, durum seçimi (Devam Edecek/Tamamlandı/N/A) + min. 3 foto zorunluluğu, malzeme girişi, kamera+GPS foto ekleme (≤2MB sıkıştırma), offline kuyruk
 
 **Faz 3 — Denetim + Raporlama**
 İşveren denetim kuyruğu (onay/red akışı + gerekçe + geçmiş), dashboard, SLA/performans raporları, export (PDF/Excel)
@@ -118,7 +124,8 @@ Push bildirimler, harita görünümü (saha/ekip konumları), tam offline senkro
 ## 7. Açık Kararlar (yarın devam)
 
 - [ ] Uygulama adı
-- [ ] Checklist içerikleri (ekipman tipine göre standart kontrol maddeleri) — kullanıcı verecek
 - [ ] Deploy hedefi: hangi VPS/domain — backend mimarisi netleştiği için şimdi konuşulabilir (bkz. Bölüm 4)
 
-**Karara bağlanmış**: Backend = tek Nuxt 3 Nitro projesi (API+web panel), MySQL, foto depolama VPS disk ile başlar (bkz. Bölüm 4).
+**Karara bağlanmış**:
+- Backend = tek Nuxt 3 Nitro projesi (API+web panel), MySQL, foto depolama ayrı Hetzner Volume (bkz. Bölüm 4)
+- Checklist yok (MVP) — bunun yerine basit durum akışı: Devam Edecek / Tamamlandı (min. 3 foto zorunlu) / N/A → otomatik Onay Bekliyor → sadece Yönetici onay/red verir (bkz. Bölüm 2). Hem asansör hem yürüyen merdiven için aynı akış.
