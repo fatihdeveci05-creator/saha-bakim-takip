@@ -2,6 +2,7 @@
 import type { Equipment, Site } from '~/types'
 
 const { apiFetch } = useApi()
+const auth = useAuth()
 const { data: items, pending, error, refresh } = await useAsyncData('equipment', () => apiFetch<Equipment[]>('/api/equipment'))
 const { data: sites } = await useAsyncData('sites-for-equipment', () => apiFetch<Site[]>('/api/sites'))
 const siteNameById = computed(() => new Map((sites.value ?? []).map((s) => [s.id, s.ad])))
@@ -10,6 +11,23 @@ const showForm = ref(false)
 const form = reactive({ siteId: '', tip: 'asansor', marka: '', model: '', seriNo: '' })
 const formError = ref('')
 const saving = ref(false)
+const deleteError = ref('')
+
+async function toggleAktif(e: Equipment) {
+  await apiFetch(`/api/equipment/${e.id}`, { method: 'PATCH', body: { aktif: !e.aktif } })
+  await refresh()
+}
+
+async function deleteEquipment(e: Equipment) {
+  if (!confirm('Bu ekipmanı silmek istediğinize emin misiniz?')) return
+  deleteError.value = ''
+  try {
+    await apiFetch(`/api/equipment/${e.id}`, { method: 'DELETE' })
+    await refresh()
+  } catch (err) {
+    deleteError.value = (err as { data?: { statusMessage?: string } })?.data?.statusMessage || 'Silinemedi'
+  }
+}
 
 async function submit() {
   formError.value = ''
@@ -72,6 +90,7 @@ const tipLabels: Record<string, string> = { asansor: 'Asansör', yuruyen_merdive
       <button class="btn btn-primary" type="submit" :disabled="saving">Kaydet</button>
     </form>
 
+    <div v-if="deleteError" class="error-box">{{ deleteError }}</div>
     <div v-if="error" class="error-box">Veriler yüklenemedi</div>
     <div v-else-if="pending" class="muted">Yükleniyor...</div>
     <div v-else-if="!items?.length" class="card muted">Kayıt yok.</div>
@@ -85,6 +104,8 @@ const tipLabels: Record<string, string> = { asansor: 'Asansör', yuruyen_merdive
             <th>Tip</th>
             <th>Marka/Model</th>
             <th>Seri No</th>
+            <th>Durum</th>
+            <th v-if="auth.user.value?.rol === 'yonetici'"></th>
           </tr>
         </thead>
         <tbody>
@@ -94,6 +115,11 @@ const tipLabels: Record<string, string> = { asansor: 'Asansör', yuruyen_merdive
             <td>{{ tipLabels[e.tip] }}</td>
             <td>{{ e.marka }} {{ e.model }}</td>
             <td>{{ e.seriNo ?? '—' }}</td>
+            <td><span class="badge" :class="e.aktif ? 'badge-onaylandi' : 'badge-reddedildi'">{{ e.aktif ? 'Aktif' : 'Pasif' }}</span></td>
+            <td v-if="auth.user.value?.rol === 'yonetici'" style="display: flex; gap: 6px">
+              <button class="btn" @click="toggleAktif(e)">{{ e.aktif ? 'Pasife al' : 'Aktifleştir' }}</button>
+              <button class="btn btn-danger" @click="deleteEquipment(e)">Sil</button>
+            </td>
           </tr>
         </tbody>
       </table>

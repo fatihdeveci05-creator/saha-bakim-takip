@@ -2,12 +2,25 @@
 import type { Site } from '~/types'
 
 const { apiFetch } = useApi()
+const auth = useAuth()
 const { data: items, pending, error, refresh } = await useAsyncData('sites', () => apiFetch<Site[]>('/api/sites'))
 
 const showForm = ref(false)
 const form = reactive({ ad: '', adres: '', lat: '', lng: '' })
 const formError = ref('')
 const saving = ref(false)
+const deleteError = ref('')
+
+async function deleteSite(s: Site) {
+  if (!confirm(`"${s.ad}" sahasını silmek istediğinize emin misiniz?`)) return
+  deleteError.value = ''
+  try {
+    await apiFetch(`/api/sites/${s.id}`, { method: 'DELETE' })
+    await refresh()
+  } catch (err) {
+    deleteError.value = (err as { data?: { statusMessage?: string } })?.data?.statusMessage || 'Silinemedi'
+  }
+}
 
 async function submit() {
   formError.value = ''
@@ -54,6 +67,7 @@ async function submit() {
       <button class="btn btn-primary" type="submit" :disabled="saving">Kaydet</button>
     </form>
 
+    <div v-if="deleteError" class="error-box">{{ deleteError }}</div>
     <div v-if="error" class="error-box">Veriler yüklenemedi</div>
     <div v-else-if="pending" class="muted">Yükleniyor...</div>
     <div v-else-if="!items?.length" class="card muted">Kayıt yok.</div>
@@ -66,6 +80,7 @@ async function submit() {
             <th>Ad</th>
             <th>Adres</th>
             <th>Konum</th>
+            <th v-if="auth.user.value?.rol === 'yonetici'"></th>
           </tr>
         </thead>
         <tbody>
@@ -74,6 +89,9 @@ async function submit() {
             <td>{{ s.ad }}</td>
             <td>{{ s.adres ?? '—' }}</td>
             <td>{{ s.lat && s.lng ? `${s.lat}, ${s.lng}` : '—' }}</td>
+            <td v-if="auth.user.value?.rol === 'yonetici'">
+              <button class="btn btn-danger" @click="deleteSite(s)">Sil</button>
+            </td>
           </tr>
         </tbody>
       </table>

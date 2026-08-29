@@ -11,6 +11,9 @@ const bodySchema = z.object({
   model: z.string().optional(),
   seriNo: z.string().optional(),
   kurulumTarihi: z.string().datetime().optional(),
+  // İş emri geçmişi olan bir ekipman silinemez (bkz. DELETE) — bunun yerine
+  // pasife alınarak Kontrol Ekibi'nin konum akışından çıkarılabilir.
+  aktif: z.boolean().optional(),
 })
 
 export default defineEventHandler(async (event) => {

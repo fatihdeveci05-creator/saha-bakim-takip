@@ -2,6 +2,7 @@
 import type { AppUser, Team } from '~/types'
 
 const { apiFetch } = useApi()
+const auth = useAuth()
 const { data: items, pending, error, refresh } = await useAsyncData('users', () => apiFetch<AppUser[]>('/api/users'))
 const { data: teamList } = await useAsyncData('teams-lookup', () => apiFetch<Team[]>('/api/teams'))
 const teamNameById = computed(() => new Map((teamList.value ?? []).map((t) => [t.id, t.ad])))
@@ -75,6 +76,18 @@ async function toggleAktif(u: AppUser) {
   await refresh()
 }
 
+const deleteError = ref('')
+async function deleteUser(u: AppUser) {
+  if (!confirm(`"${u.ad}" kullanıcısını silmek istediğinize emin misiniz?`)) return
+  deleteError.value = ''
+  try {
+    await apiFetch(`/api/users/${u.id}`, { method: 'DELETE' })
+    await refresh()
+  } catch (err) {
+    deleteError.value = (err as { data?: { statusMessage?: string } })?.data?.statusMessage || 'Silinemedi'
+  }
+}
+
 async function changeTeam(u: AppUser, takimId: string) {
   await apiFetch(`/api/users/${u.id}`, { method: 'PATCH', body: { takimId: takimId ? Number(takimId) : null } })
   await refresh()
@@ -123,6 +136,7 @@ async function changeTeam(u: AppUser, takimId: string) {
       <button class="btn btn-primary" type="submit" :disabled="saving">Kaydet</button>
     </form>
 
+    <div v-if="deleteError" class="error-box">{{ deleteError }}</div>
     <div v-if="error" class="error-box">Veriler yüklenemedi</div>
     <div v-else-if="pending" class="muted">Yükleniyor...</div>
     <div v-else-if="!items?.length" class="card muted">Kayıt yok.</div>
@@ -163,8 +177,9 @@ async function changeTeam(u: AppUser, takimId: string) {
             <td>
               <span class="badge" :class="u.aktif ? 'badge-onaylandi' : 'badge-reddedildi'">{{ u.aktif ? 'Aktif' : 'Pasif' }}</span>
             </td>
-            <td>
+            <td style="display: flex; gap: 6px">
               <button class="btn" @click="toggleAktif(u)">{{ u.aktif ? 'Pasife al' : 'Aktifleştir' }}</button>
+              <button v-if="auth.user.value?.rol === 'yonetici'" class="btn btn-danger" @click="deleteUser(u)">Sil</button>
             </td>
           </tr>
         </tbody>

@@ -25,6 +25,7 @@ export interface Equipment {
   model: string | null
   seriNo: string | null
   kurulumTarihi: string | null
+  aktif: boolean
   createdAt: string
 }
 
