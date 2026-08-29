@@ -2,6 +2,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:provider/provider.dart';
 
 import 'core/api_client.dart';
@@ -23,6 +24,9 @@ void main() async {
   if (!kIsWeb) {
     await Firebase.initializeApp();
     FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+    // Android'de arka plan konum servisiyle (LocationService, foreground
+    // task izolesi) ana izole arasında iki yönlü haberleşme için gerekli.
+    FlutterForegroundTask.initCommunicationPort();
   }
   runApp(const AbbKontrolApp());
 }
@@ -98,6 +102,7 @@ class _RootGateState extends State<_RootGate> with WidgetsBindingObserver {
     }
 
     if (!auth.isLoggedIn) {
+      if (_servicesStarted) context.read<LocationService>().stop();
       _servicesStarted = false;
       return const LoginScreen();
     }

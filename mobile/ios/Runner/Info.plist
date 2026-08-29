@@ -49,9 +49,14 @@
 	<string>İş emri kanıtı için fotoğraf çekmek üzere kameraya erişim gerekir.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Fotoğraf çekerken ve saha ekibi konumunu paylaşırken konumunuza erişim gerekir.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Saha ekibi konumunun uygulama arka plandayken de düzenli paylaşılabilmesi için "Her Zaman" konum izni gerekir.</string>
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>Saha ekibi konumunun uygulama arka plandayken de düzenli paylaşılabilmesi için "Her Zaman" konum izni gerekir.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>remote-notification</string>
+		<string>location</string>
 	</array>
 </dict>
 </plist>
