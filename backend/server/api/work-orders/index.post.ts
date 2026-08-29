@@ -36,7 +36,11 @@ export default defineEventHandler(async (event) => {
     if (body.tip !== 'ariza') {
       throw createError({ statusCode: 403, statusMessage: 'Sadece arıza bildirebilirsiniz' })
     }
-    atananUserId = Number(payload.sub)
+    // Arıza Ekibi kendi bildirdiği arızayı genelde kendi çözer, o yüzden
+    // kendine atanır. Kontrol Ekibi (ve diğer roller) sadece bildirir,
+    // müdahale etmez — atanmamış bırakılır ki herhangi bir Arıza Ekibi
+    // üyesi alabilsin (bkz. workOrderAccess.canClaimUnassignedWorkOrder).
+    atananUserId = payload.rol === 'ariza_ekibi' ? Number(payload.sub) : undefined
   } else {
     throw createError({ statusCode: 403, statusMessage: 'Bu işlem için yetkiniz yok' })
   }

@@ -15,6 +15,7 @@ import '../models/user_location.dart';
 import '../models/work_order.dart';
 import 'assign_work_order_screen.dart';
 import 'notifications_screen.dart';
+import 'saha_durumu_screen.dart';
 import 'work_order_detail_screen.dart';
 
 class EmployerHomeScreen extends StatefulWidget {
@@ -30,7 +31,7 @@ class _EmployerHomeScreenState extends State<EmployerHomeScreen> with SingleTick
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
   }
 
   @override
@@ -50,6 +51,7 @@ class _EmployerHomeScreenState extends State<EmployerHomeScreen> with SingleTick
           tabs: const [
             Tab(text: 'Denetim Kuyruğu'),
             Tab(text: 'Canlı Harita'),
+            Tab(text: 'Saha Durumu'),
           ],
         ),
         actions: [
@@ -57,7 +59,7 @@ class _EmployerHomeScreenState extends State<EmployerHomeScreen> with SingleTick
           IconButton(icon: const Icon(Icons.logout), tooltip: 'Çıkış yap', onPressed: () => auth.logout()),
         ],
       ),
-      body: TabBarView(controller: _tabController, children: const [_DenetimKuyruguTab(), _CanliHaritaTab()]),
+      body: TabBarView(controller: _tabController, children: const [_DenetimKuyruguTab(), _CanliHaritaTab(), SahaDurumuBody()]),
       floatingActionButton: auth.currentUser?.rol == 'yonetici'
           ? FloatingActionButton.extended(
               icon: const Icon(Icons.assignment_add),

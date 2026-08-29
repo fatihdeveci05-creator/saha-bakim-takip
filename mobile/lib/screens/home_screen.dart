@@ -11,6 +11,7 @@ import '../widgets/status_badge.dart';
 import 'assign_work_order_screen.dart';
 import 'notifications_screen.dart';
 import 'report_ariza_screen.dart';
+import 'saha_durumu_screen.dart';
 import 'work_order_detail_screen.dart';
 
 /// Sekme grupları PLAN.md'deki "bugün/bekleyen/tamamlanan/reddedilen" isimlerine
@@ -127,6 +128,14 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           tabs: _Tab.values.map((tab) => Tab(text: _tabLabel(tab))).toList(),
         ),
         actions: [
+          if (auth.currentUser?.rol == 'sorumlu')
+            IconButton(
+              icon: const Icon(Icons.grid_view_outlined),
+              tooltip: 'Saha Durumu',
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => Scaffold(appBar: AppBar(title: const Text('Saha Durumu')), body: const SahaDurumuBody())),
+              ),
+            ),
           const NotificationBellButton(),
           IconButton(icon: const Icon(Icons.logout), tooltip: 'Çıkış yap', onPressed: () => auth.logout()),
         ],

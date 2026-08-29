@@ -7,6 +7,8 @@ const nav = [
   { to: '/denetim', label: 'Denetim Kuyruğu' },
   { to: '/work-orders', label: 'İş Emirleri' },
   { to: '/map', label: 'Canlı Harita' },
+  { to: '/saha-haritasi', label: 'Saha Haritası' },
+  { to: '/saha-durumu', label: 'Saha Durumu' },
   { to: '/sites', label: 'Sahalar' },
   { to: '/equipment', label: 'Ekipmanlar' },
   { to: '/teams', label: 'Ekipler' },
