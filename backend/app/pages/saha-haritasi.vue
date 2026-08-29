@@ -14,6 +14,7 @@ const mapEl = ref<HTMLDivElement | null>(null)
 let map: import('leaflet').Map | null = null
 let markersLayer: import('leaflet').LayerGroup | null = null
 let pollHandle: ReturnType<typeof setInterval> | null = null
+let hasFitBoundsOnce = false
 
 const RENK_HEX: Record<string, string> = { kirmizi: '#dc2626', sari: '#d97706', yesil: '#16a34a' }
 const RENK_LABEL: Record<string, string> = { kirmizi: 'Sorun var', sari: 'Bakımda', yesil: 'Sorun yok' }
@@ -22,10 +23,12 @@ async function loadAndRenderSites(L: typeof import('leaflet')) {
   const sitesData = await apiFetch<SiteStatus[]>('/api/sites/status')
   if (!map || !markersLayer) return
   markersLayer.clearLayers()
+  const points: [number, number][] = []
   for (const site of sitesData) {
     const lat = Number(site.lat)
     const lng = Number(site.lng)
     if (Number.isNaN(lat) || Number.isNaN(lng)) continue
+    points.push([lat, lng])
     L.circleMarker([lat, lng], {
       radius: 12,
       color: '#fff',
@@ -37,6 +40,17 @@ async function loadAndRenderSites(L: typeof import('leaflet')) {
         `<b>${site.ad}</b><br>${RENK_LABEL[site.durum]}<br>${site.equipment.length} ünite<br><a href="/saha-durumu">Detay için Saha Durumu →</a>`,
       )
       .addTo(markersLayer)
+  }
+  // Sabit İstanbul merkez/zoom yerine tüm sahaları kapsayacak şekilde
+  // otomatik yakınlaştır — ama sadece ilk yüklemede, periyodik yenilemede
+  // kullanıcının haritada gezindiği görünümü sıfırlama.
+  if (!hasFitBoundsOnce && points.length) {
+    hasFitBoundsOnce = true
+    if (points.length === 1) {
+      map.setView(points[0], 15)
+    } else {
+      map.fitBounds(L.latLngBounds(points), { padding: [40, 40], maxZoom: 15 })
+    }
   }
 }
 

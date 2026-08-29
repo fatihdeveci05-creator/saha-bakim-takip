@@ -7,18 +7,32 @@ const mapEl = ref<HTMLDivElement | null>(null)
 let map: import('leaflet').Map | null = null
 let markersLayer: import('leaflet').LayerGroup | null = null
 let pollHandle: ReturnType<typeof setInterval> | null = null
+let hasFitBoundsOnce = false
 
 async function loadAndRenderLocations(L: typeof import('leaflet')) {
   const locations = await apiFetch<UserLocation[]>('/api/locations')
   if (!map || !markersLayer) return
   markersLayer.clearLayers()
+  const points: [number, number][] = []
   for (const loc of locations) {
     const lat = Number(loc.lat)
     const lng = Number(loc.lng)
     if (Number.isNaN(lat) || Number.isNaN(lng)) continue
+    points.push([lat, lng])
     L.marker([lat, lng])
       .bindPopup(`<b>${loc.ad}</b><br>${loc.rol}<br>${new Date(loc.updatedAt).toLocaleString('tr-TR')}`)
       .addTo(markersLayer)
+  }
+  // Sabit İstanbul merkez/zoom yerine tüm noktaları kapsayacak şekilde
+  // otomatik yakınlaştır — ama sadece ilk yüklemede, kullanıcı sonradan
+  // haritada gezinirse periyodik yenilemede görünümü sıfırlama.
+  if (!hasFitBoundsOnce && points.length) {
+    hasFitBoundsOnce = true
+    if (points.length === 1) {
+      map.setView(points[0], 15)
+    } else {
+      map.fitBounds(L.latLngBounds(points), { padding: [40, 40], maxZoom: 15 })
+    }
   }
 }
 
