@@ -1,8 +1,12 @@
-import { and, eq, gte, lte, inArray, notInArray } from 'drizzle-orm'
+import { and, eq, gte, lte, inArray, notInArray, getTableColumns } from 'drizzle-orm'
+import { alias } from 'drizzle-orm/mysql-core'
 import { requireAuth } from '../../utils/auth'
 import { useDb } from '../../database/client'
-import { workOrders, isEmriDurumEnum } from '../../database/schema'
+import { workOrders, isEmriDurumEnum, users } from '../../database/schema'
 import { canViewAllWorkOrders, visibleTipsFor } from '../../utils/workOrderAccess'
+
+const atanan = alias(users, 'atanan')
+const resolvedBy = alias(users, 'resolvedBy')
 
 export default defineEventHandler(async (event) => {
   const payload = await requireAuth(event)
@@ -33,8 +37,20 @@ export default defineEventHandler(async (event) => {
   }
 
   const db = useDb()
+  // Atanan ve çözen personelin adı — listede/denetim kuyruğunda tekil kullanıcı
+  // sorgusu yapmaya gerek kalmasın diye burada join ediliyor.
+  const query_ = db
+    .select({
+      ...getTableColumns(workOrders),
+      atananAd: atanan.ad,
+      resolvedByAd: resolvedBy.ad,
+    })
+    .from(workOrders)
+    .leftJoin(atanan, eq(atanan.id, workOrders.atananUserId))
+    .leftJoin(resolvedBy, eq(resolvedBy.id, workOrders.resolvedByUserId))
+
   if (conditions.length) {
-    return db.select().from(workOrders).where(and(...conditions))
+    return query_.where(and(...conditions))
   }
-  return db.select().from(workOrders)
+  return query_
 })

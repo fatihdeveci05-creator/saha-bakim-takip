@@ -31,6 +31,9 @@ class _WorkOrderDetailScreenState extends State<WorkOrderDetailScreen> {
   Site? _site;
   List<MaterialItem> _materials = [];
   List<AuthUser> _workers = [];
+  // "Ünite künyesi" — bu ekipmanın tüm geçmişi (tip farkı gözetmeksizin), örn.
+  // Bakım Ekibi Arıza Ekibi'nin bıraktığı notları burada görür.
+  List<Map<String, dynamic>> _equipmentHistory = [];
   int? _assignUserId;
   bool _assigning = false;
   bool _loading = true;
@@ -65,12 +68,17 @@ class _WorkOrderDetailScreenState extends State<WorkOrderDetailScreen> {
       final results = await Future.wait([
         _dio.get('/api/equipment/${detail.equipmentId}'),
         _dio.get('/api/materials'),
+        _dio.get('/api/equipment/${detail.equipmentId}/history'),
         if (canAssign) _dio.get('/api/users'),
       ]);
       final equipment = Equipment.fromJson(results[0].data as Map<String, dynamic>);
       final materials = (results[1].data as List<dynamic>).map((e) => MaterialItem.fromJson(e as Map<String, dynamic>)).toList();
+      final history = (results[2].data as List<dynamic>)
+          .cast<Map<String, dynamic>>()
+          .where((h) => h['id'] != widget.workOrderId)
+          .toList();
       final workers = canAssign
-          ? (results[2].data as List<dynamic>)
+          ? (results[3].data as List<dynamic>)
                 .map((e) => AuthUser.fromJson(e as Map<String, dynamic>))
                 .where((u) => u.isAltYuklenici)
                 .toList()
@@ -82,6 +90,7 @@ class _WorkOrderDetailScreenState extends State<WorkOrderDetailScreen> {
         _equipment = equipment;
         _site = Site.fromJson(siteRes.data as Map<String, dynamic>);
         _materials = materials;
+        _equipmentHistory = history;
         _workers = workers;
         _loading = false;
       });
@@ -320,6 +329,16 @@ class _WorkOrderDetailScreenState extends State<WorkOrderDetailScreen> {
                       ],
                     ),
                   ],
+                  if (detail.resolvedByUserId != null) ...[
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        const Icon(Icons.check_circle_outline, size: 16, color: Colors.grey),
+                        const SizedBox(width: 4),
+                        Text('Çözen: ${detail.resolvedByAd ?? '#${detail.resolvedByUserId}'}', style: const TextStyle(color: Colors.grey)),
+                      ],
+                    ),
+                  ],
 
                   if (detail.atananUserId == null && detail.durum == 'bekliyor' && _workers.isNotEmpty) ...[
                     const SizedBox(height: 12),
@@ -483,6 +502,41 @@ class _WorkOrderDetailScreenState extends State<WorkOrderDetailScreen> {
                                 children: [
                                   Text(DateFormat('dd.MM.yyyy HH:mm').format(t.createdAt.toLocal()), style: const TextStyle(fontSize: 12, color: Colors.grey)),
                                   if (t.not != null) Text(t.not!, style: const TextStyle(fontSize: 13)),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
+
+                  if (_equipmentHistory.isNotEmpty) ...[
+                    const Divider(height: 32),
+                    Text('Ünite Geçmişi', style: const TextStyle(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 4),
+                    const Text(
+                      'Bu ekipmanla ilgili önceki kayıtlar (tüm tipler)',
+                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                    const SizedBox(height: 8),
+                    for (final h in _equipmentHistory)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 6),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            StatusBadge(durum: h['durum'] as String),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    '${WorkOrder.tipLabels[h['tip']] ?? h['tip']} · ${h['resolvedByAd'] ?? '—'}'
+                                    '${h['resolvedAt'] != null ? ' · ${DateFormat('dd.MM.yyyy').format(DateTime.parse(h['resolvedAt'] as String).toLocal())}' : ''}',
+                                    style: const TextStyle(fontSize: 12, color: Colors.grey),
+                                  ),
+                                  if (h['aciklama'] != null) Text(h['aciklama'] as String, style: const TextStyle(fontSize: 13)),
                                 ],
                               ),
                             ),

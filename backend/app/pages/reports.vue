@@ -35,10 +35,11 @@ async function exportExcel() {
     await downloadExcel(`abb-kontrol-raporlar-${periodSlug}-${new Date().toISOString().slice(0, 10)}.xlsx`, [
       {
         name: 'Personel Performansı',
-        headers: ['Personel', 'Atanan İş', 'Onaylanan', 'Reddedilen', 'Ort. Müdahale (sa)', 'Ort. Çözüm (sa)'],
+        headers: ['Personel', 'Atanan İş', 'Çözdüğü İş', 'Onaylanan', 'Reddedilen', 'Ort. Müdahale (sa)', 'Ort. Çözüm (sa)'],
         rows: data.value.personelPerformans.map((p) => [
           p.ad,
           p.atananSayisi,
+          p.cozdugSayisi,
           p.onaylananSayisi,
           p.reddedilenSayisi,
           p.ortMudahaleSaat !== null ? Number(p.ortMudahaleSaat.toFixed(2)) : null,
@@ -113,6 +114,7 @@ async function exportExcel() {
               <tr>
                 <th>Personel</th>
                 <th>Atanan İş</th>
+                <th>Çözdüğü İş</th>
                 <th>Onaylanan</th>
                 <th>Reddedilen</th>
                 <th>Ort. Müdahale</th>
@@ -123,13 +125,14 @@ async function exportExcel() {
               <tr v-for="p in data.personelPerformans" :key="p.userId">
                 <td>{{ p.ad }}</td>
                 <td>{{ p.atananSayisi }}</td>
+                <td>{{ p.cozdugSayisi }}</td>
                 <td>{{ p.onaylananSayisi }}</td>
                 <td>{{ p.reddedilenSayisi }}</td>
                 <td>{{ fmtSaat(p.ortMudahaleSaat) }}</td>
                 <td>{{ fmtSaat(p.ortCozumSaat) }}</td>
               </tr>
               <tr v-if="!data.personelPerformans.length">
-                <td colspan="6" class="muted">Kayıt yok</td>
+                <td colspan="7" class="muted">Kayıt yok</td>
               </tr>
             </tbody>
           </table>

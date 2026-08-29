@@ -1,4 +1,4 @@
-import { desc, eq } from 'drizzle-orm'
+import { desc, eq, inArray } from 'drizzle-orm'
 import { requireAuth } from '../../utils/auth'
 import { useDb } from '../../database/client'
 import {
@@ -23,12 +23,19 @@ export default defineEventHandler(async (event) => {
   }
   assertCanViewWorkOrder(payload, workOrder)
 
-  // Atanan personelin adı — listede/detayda "kime atanmış" görünür olsun diye
-  // (aksi halde diğer personel "size atanmamış" hatasını neden aldığını göremiyor).
+  // Atanan ve çözen personelin adı — "kime atanmış"/"kim çözdü" her yerde
+  // görünür olsun diye (denetim kuyruğu, raporlar, detay ekranı).
   let atananAd: string | null = null
-  if (workOrder.atananUserId) {
-    const [assignee] = await db.select({ ad: users.ad }).from(users).where(eq(users.id, workOrder.atananUserId)).limit(1)
-    atananAd = assignee?.ad ?? null
+  let resolvedByAd: string | null = null
+  const idsToLookup = [workOrder.atananUserId, workOrder.resolvedByUserId].filter((v): v is number => v != null)
+  if (idsToLookup.length) {
+    const rows = await db
+      .select({ id: users.id, ad: users.ad })
+      .from(users)
+      .where(inArray(users.id, idsToLookup))
+    const byId = new Map(rows.map((r) => [r.id, r.ad]))
+    atananAd = workOrder.atananUserId ? (byId.get(workOrder.atananUserId) ?? null) : null
+    resolvedByAd = workOrder.resolvedByUserId ? (byId.get(workOrder.resolvedByUserId) ?? null) : null
   }
 
   const [photos, reviews, timeline, usedMaterials] = await Promise.all([
@@ -55,5 +62,5 @@ export default defineEventHandler(async (event) => {
       .where(eq(workOrderMaterials.workOrderId, id)),
   ])
 
-  return { ...workOrder, atananAd, photos, reviews, timeline, materials: usedMaterials }
+  return { ...workOrder, atananAd, resolvedByAd, photos, reviews, timeline, materials: usedMaterials }
 })

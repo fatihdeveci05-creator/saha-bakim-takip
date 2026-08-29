@@ -162,7 +162,9 @@ class _DenetimKuyruguTabState extends State<_DenetimKuyruguTab> with WidgetsBind
                 return Card(
                   child: ListTile(
                     title: Text(_equipmentLabel(wo.equipmentId)),
-                    subtitle: Text('${wo.tipLabel} · Çözüldü: ${wo.resolvedAt != null ? fmt.format(wo.resolvedAt!.toLocal()) : '—'}'),
+                    subtitle: Text(
+                      '${wo.tipLabel} · Çözen: ${wo.resolvedByLabel} · ${wo.resolvedAt != null ? fmt.format(wo.resolvedAt!.toLocal()) : '—'}',
+                    ),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () async {
                       await Navigator.of(context).push(MaterialPageRoute(builder: (_) => WorkOrderDetailScreen(workOrderId: wo.id)));

@@ -42,7 +42,7 @@ export default defineEventHandler(async (event) => {
       : db.select().from(workOrders),
     (() => {
       const q = db
-        .select({ sonuc: workOrderReviews.sonuc, atananUserId: workOrders.atananUserId })
+        .select({ sonuc: workOrderReviews.sonuc, resolvedByUserId: workOrders.resolvedByUserId })
         .from(workOrderReviews)
         .innerJoin(workOrders, eq(workOrders.id, workOrderReviews.workOrderId))
       return reviewDateConditions.length ? q.where(and(...reviewDateConditions)) : q
@@ -63,16 +63,24 @@ export default defineEventHandler(async (event) => {
   ])
 
   // --- Personel performansı ---
+  // NOT: atananUserId değil resolvedByUserId (kim fiilen çözdü) baz alınır —
+  // Yüklenici başkasının işini tamamlayabiliyor, atanmamış (açık) işler de
+  // uygun rol tarafından çözülebiliyor (atanan_user_id null kalsa bile),
+  // dolayısıyla "kim ne kadar iş çıkardı" sorusunun doğru cevabı bu.
   const personelPerformans = altYuklenicilar.map((u) => {
-    const own = allWorkOrders.filter((w) => w.atananUserId === u.id)
-    const mudahaleSaatleri = own.map((w) => hoursBetween(w.reportedAt, w.responseStartedAt)).filter((v): v is number => v !== null)
-    const cozumSaatleri = own.map((w) => hoursBetween(w.reportedAt, w.resolvedAt)).filter((v): v is number => v !== null)
+    const atanan = allWorkOrders.filter((w) => w.atananUserId === u.id)
+    const cozulen = allWorkOrders.filter((w) => w.resolvedByUserId === u.id)
+    const mudahaleSaatleri = atanan
+      .map((w) => hoursBetween(w.reportedAt, w.responseStartedAt))
+      .filter((v): v is number => v !== null)
+    const cozumSaatleri = cozulen.map((w) => hoursBetween(w.reportedAt, w.resolvedAt)).filter((v): v is number => v !== null)
     return {
       userId: u.id,
       ad: u.ad,
-      atananSayisi: own.length,
-      onaylananSayisi: own.filter((w) => w.durum === 'onaylandi').length,
-      reddedilenSayisi: own.filter((w) => w.durum === 'reddedildi').length,
+      atananSayisi: atanan.length,
+      cozdugSayisi: cozulen.length,
+      onaylananSayisi: cozulen.filter((w) => w.durum === 'onaylandi').length,
+      reddedilenSayisi: cozulen.filter((w) => w.durum === 'reddedildi').length,
       ortMudahaleSaat: avgHours(mudahaleSaatleri),
       ortCozumSaat: avgHours(cozumSaatleri),
     }
@@ -82,7 +90,7 @@ export default defineEventHandler(async (event) => {
   const toplamDenetim = allReviewsRaw.length
   const toplamRed = allReviewsRaw.filter((r) => r.sonuc === 'red').length
   const redOraniByUser = altYuklenicilar.map((u) => {
-    const own = allReviewsRaw.filter((r) => r.atananUserId === u.id)
+    const own = allReviewsRaw.filter((r) => r.resolvedByUserId === u.id)
     const red = own.filter((r) => r.sonuc === 'red').length
     return { userId: u.id, ad: u.ad, toplamDenetim: own.length, red, oran: own.length ? red / own.length : null }
   })

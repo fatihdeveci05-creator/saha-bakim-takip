@@ -94,6 +94,8 @@ export interface WorkOrder {
   responseStartedAt: string | null
   resolvedAt: string | null
   resolvedByUserId: number | null
+  atananAd: string | null
+  resolvedByAd: string | null
   createdAt: string
   updatedAt: string
 }

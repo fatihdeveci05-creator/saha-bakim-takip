@@ -139,7 +139,9 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
             ? Center(child: Text(_error!))
             : TabBarView(
                 controller: _tabController,
-                children: _Tab.values.map((tab) => _WorkOrderList(items: _filter(tab), equipmentLabel: _equipmentLabel)).toList(),
+                children: _Tab.values
+                    .map((tab) => _WorkOrderList(items: _filter(tab), equipmentLabel: _equipmentLabel, onReturn: _load))
+                    .toList(),
               ),
       ),
       floatingActionButton: Column(
@@ -175,10 +177,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 }
 
 class _WorkOrderList extends StatelessWidget {
-  const _WorkOrderList({required this.items, required this.equipmentLabel});
+  const _WorkOrderList({required this.items, required this.equipmentLabel, required this.onReturn});
 
   final List<WorkOrder> items;
   final String Function(int equipmentId) equipmentLabel;
+  final VoidCallback onReturn;
 
   @override
   Widget build(BuildContext context) {
@@ -197,7 +200,10 @@ class _WorkOrderList extends StatelessWidget {
             title: Text(equipmentLabel(wo.equipmentId)),
             subtitle: Text('${wo.tipLabel} · ${wo.reportedAt != null ? fmt.format(wo.reportedAt!.toLocal()) : '—'}'),
             trailing: StatusBadge(durum: wo.durum),
-            onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => WorkOrderDetailScreen(workOrderId: wo.id))),
+            onTap: () async {
+              await Navigator.of(context).push(MaterialPageRoute(builder: (_) => WorkOrderDetailScreen(workOrderId: wo.id)));
+              onReturn();
+            },
           ),
         );
       },

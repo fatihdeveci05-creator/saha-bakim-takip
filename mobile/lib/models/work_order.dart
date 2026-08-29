@@ -11,6 +11,9 @@ class WorkOrder {
   final DateTime? reportedAt;
   final DateTime? responseStartedAt;
   final DateTime? resolvedAt;
+  final int? resolvedByUserId;
+  final String? atananAd;
+  final String? resolvedByAd;
   final DateTime createdAt;
 
   WorkOrder({
@@ -24,6 +27,9 @@ class WorkOrder {
     required this.reportedAt,
     required this.responseStartedAt,
     required this.resolvedAt,
+    required this.resolvedByUserId,
+    required this.atananAd,
+    required this.resolvedByAd,
     required this.createdAt,
   });
 
@@ -38,8 +44,14 @@ class WorkOrder {
     reportedAt: _parseDate(json['reportedAt']),
     responseStartedAt: _parseDate(json['responseStartedAt']),
     resolvedAt: _parseDate(json['resolvedAt']),
+    resolvedByUserId: json['resolvedByUserId'] as int?,
+    atananAd: json['atananAd'] as String?,
+    resolvedByAd: json['resolvedByAd'] as String?,
     createdAt: DateTime.parse(json['createdAt'] as String),
   );
+
+  String get atananLabel => atananAd ?? (atananUserId != null ? '#$atananUserId' : '—');
+  String get resolvedByLabel => resolvedByAd ?? (resolvedByUserId != null ? '#$resolvedByUserId' : '—');
 
   static DateTime? _parseDate(dynamic v) => v == null ? null : DateTime.parse(v as String);
 
@@ -128,7 +140,6 @@ class WorkOrderTimelineEntry {
 }
 
 class WorkOrderDetail extends WorkOrder {
-  final String? atananAd;
   final List<WorkOrderPhoto> photos;
   final List<WorkOrderReview> reviews;
   final List<WorkOrderMaterialUsage> materials;
@@ -145,8 +156,10 @@ class WorkOrderDetail extends WorkOrder {
     required super.reportedAt,
     required super.responseStartedAt,
     required super.resolvedAt,
+    required super.resolvedByUserId,
+    required super.atananAd,
+    required super.resolvedByAd,
     required super.createdAt,
-    required this.atananAd,
     required this.photos,
     required this.reviews,
     required this.materials,
@@ -166,8 +179,10 @@ class WorkOrderDetail extends WorkOrder {
       reportedAt: base.reportedAt,
       responseStartedAt: base.responseStartedAt,
       resolvedAt: base.resolvedAt,
+      resolvedByUserId: base.resolvedByUserId,
+      atananAd: base.atananAd,
+      resolvedByAd: base.resolvedByAd,
       createdAt: base.createdAt,
-      atananAd: json['atananAd'] as String?,
       photos: (json['photos'] as List<dynamic>? ?? [])
           .map((e) => WorkOrderPhoto.fromJson(e as Map<String, dynamic>))
           .toList(),

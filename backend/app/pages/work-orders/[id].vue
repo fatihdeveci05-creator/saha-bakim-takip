@@ -14,11 +14,26 @@ const { data: wo, pending, error, refresh } = await useAsyncData(`work-order-${i
 const equipment = ref<Equipment | null>(null)
 const site = ref<Site | null>(null)
 
+interface EquipmentHistoryEntry {
+  id: number
+  tip: string
+  durum: string
+  aciklama: string | null
+  reportedAt: string | null
+  resolvedAt: string | null
+  resolvedByUserId: number | null
+  resolvedByAd: string | null
+}
+// "Ünite künyesi" — bu ekipmanın tüm geçmişi (tip farkı gözetmeksizin).
+const equipmentHistory = ref<EquipmentHistoryEntry[]>([])
+
 watchEffect(async () => {
   if (!wo.value) return
   equipment.value = await apiFetch<Equipment>(`/api/equipment/${wo.value.equipmentId}`)
   if (equipment.value) {
     site.value = await apiFetch<Site>(`/api/sites/${equipment.value.siteId}`)
+    const history = await apiFetch<EquipmentHistoryEntry[]>(`/api/equipment/${equipment.value.id}/history`)
+    equipmentHistory.value = history.filter((h) => h.id !== wo.value?.id)
   }
 })
 
@@ -106,6 +121,7 @@ async function submitReview(sonuc: 'onay' | 'red') {
           <div v-if="wo.atananUserId"><span class="muted">Atanan:</span> {{ wo.atananAd ?? `#${wo.atananUserId}` }}</div>
           <div><span class="muted">Bildirim:</span> {{ fmt(wo.reportedAt) }}</div>
           <div><span class="muted">Müdahale başlangıcı:</span> {{ fmt(wo.responseStartedAt) }}</div>
+          <div v-if="wo.resolvedByUserId"><span class="muted">Çözen:</span> {{ wo.resolvedByAd ?? `#${wo.resolvedByUserId}` }}</div>
           <div><span class="muted">Çözüldü:</span> {{ fmt(wo.resolvedAt) }}</div>
           <div v-if="wo.parentWorkOrderId">
             <span class="muted">Bağlı olduğu iş:</span>
@@ -167,6 +183,16 @@ async function submitReview(sonuc: 'onay' | 'red') {
           <span class="badge" :class="r.sonuc === 'onay' ? 'badge-onaylandi' : 'badge-reddedildi'">{{ r.sonuc === 'onay' ? 'Onay' : 'Red' }}</span>
           <span class="muted" style="margin-left: 8px">{{ fmt(r.incelenenZaman) }}</span>
           <p v-if="r.gerekce" style="margin: 4px 0 0">{{ r.gerekce }}</p>
+        </div>
+      </div>
+
+      <div class="card" v-if="equipmentHistory.length">
+        <h3 style="margin-top: 0">Ünite Geçmişi</h3>
+        <div class="muted" style="font-size: 12px; margin-bottom: 8px">Bu ekipmanla ilgili önceki kayıtlar (tüm tipler)</div>
+        <div v-for="h in equipmentHistory" :key="h.id" style="padding: 8px 0; border-top: 1px solid var(--border)">
+          <span class="badge" :class="`badge-${h.durum}`">{{ DURUM_LABELS[h.durum] }}</span>
+          <span class="muted" style="margin-left: 8px">{{ tipLabels[h.tip] }} · {{ h.resolvedByAd ?? '—' }} · {{ fmt(h.resolvedAt) }}</span>
+          <p v-if="h.aciklama" style="margin: 4px 0 0">{{ h.aciklama }}</p>
         </div>
       </div>
 

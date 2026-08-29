@@ -35,6 +35,7 @@ onActivated(() => refresh())
             <th>#</th>
             <th>Ekipman</th>
             <th>Tip</th>
+            <th>Çözen</th>
             <th>Çözüldü</th>
             <th></th>
           </tr>
@@ -44,6 +45,7 @@ onActivated(() => refresh())
             <td>{{ wo.id }}</td>
             <td>#{{ wo.equipmentId }}</td>
             <td>{{ tipLabels[wo.tip] }}</td>
+            <td>{{ wo.resolvedByAd ?? (wo.resolvedByUserId ? `#${wo.resolvedByUserId}` : '—') }}</td>
             <td>{{ fmt(wo.resolvedAt) }}</td>
             <td>
               <NuxtLink class="btn btn-primary" :to="`/work-orders/${wo.id}`">İncele</NuxtLink>
