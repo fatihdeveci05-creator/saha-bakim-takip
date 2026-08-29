@@ -200,6 +200,15 @@ class _DenetimKuyruguTabState extends State<_DenetimKuyruguTab> with WidgetsBind
 // veriyor — bkz. workOrderAccess.canViewAllWorkOrders).
 enum _DurumFilter { hepsi, bekliyor, devamEdiyor, tamamlanan, reddedilen }
 
+// "Bekliyor"/"Müdahale Başladı" hâlâ açık/aktif işlerdir — tarihe göre
+// filtrelenmez, aksi halde unutulmuş eski bir arıza görünmez olurdu.
+// Sadece kapanmış kayıtlar (Tamamlanan/Reddedilen) tarih filtresine
+// tabidir — aynı home_screen.dart'taki mantık (kullanıcı talebiyle
+// İşveren'in de Bekleyen/Bugün'de HERŞEYİ görmesi, sadece
+// Tamamlanan/Reddedilen'in bugüne kısıtlanması gerekiyor).
+const _tumIslerAktifDurumlar = {'bekliyor', 'devam_edecek'};
+const _tumIslerGecmisDurumlar = {'onay_bekliyor', 'onaylandi', 'reddedildi', 'na'};
+
 class _TumIslerTab extends StatefulWidget {
   const _TumIslerTab();
 
@@ -233,6 +242,7 @@ class _TumIslerTabState extends State<_TumIslerTab> {
       final dio = context.read<ApiClient>().dio;
       final range = periodRange(_period, customFrom: _customFrom, customTo: _customTo);
       final results = await Future.wait([
+        dio.get('/api/work-orders'),
         dio.get(
           '/api/work-orders',
           queryParameters: {
@@ -243,11 +253,16 @@ class _TumIslerTabState extends State<_TumIslerTab> {
         dio.get('/api/equipment'),
         dio.get('/api/sites'),
       ]);
-      final items = (results[0].data as List<dynamic>).map((e) => WorkOrder.fromJson(e as Map<String, dynamic>)).toList();
-      final equipmentList = (results[1].data as List<dynamic>).map((e) => Equipment.fromJson(e as Map<String, dynamic>)).toList();
-      final siteList = (results[2].data as List<dynamic>).map((e) => Site.fromJson(e as Map<String, dynamic>)).toList();
+      final active = (results[0].data as List<dynamic>)
+          .map((e) => WorkOrder.fromJson(e as Map<String, dynamic>))
+          .where((w) => _tumIslerAktifDurumlar.contains(w.durum));
+      final historical = (results[1].data as List<dynamic>)
+          .map((e) => WorkOrder.fromJson(e as Map<String, dynamic>))
+          .where((w) => _tumIslerGecmisDurumlar.contains(w.durum));
+      final equipmentList = (results[2].data as List<dynamic>).map((e) => Equipment.fromJson(e as Map<String, dynamic>)).toList();
+      final siteList = (results[3].data as List<dynamic>).map((e) => Site.fromJson(e as Map<String, dynamic>)).toList();
       setState(() {
-        _items = items;
+        _items = [...active, ...historical];
         _equipmentById = {for (final e in equipmentList) e.id: e};
         _siteById = {for (final s in siteList) s.id: s};
         _loading = false;
@@ -356,7 +371,7 @@ class _TumIslerTabState extends State<_TumIslerTab> {
           child: Align(
             alignment: Alignment.centerLeft,
             child: Text(
-              periodDisplayLabel(_period, customFrom: _customFrom, customTo: _customTo),
+              'Tamamlanan/Reddedilen: ${periodDisplayLabel(_period, customFrom: _customFrom, customTo: _customTo)}',
               style: const TextStyle(fontSize: 12, color: Colors.grey),
             ),
           ),
