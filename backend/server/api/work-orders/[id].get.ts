@@ -8,6 +8,7 @@ import {
   workOrderTimeline,
   workOrderMaterials,
   materials,
+  users,
 } from '../../database/schema'
 import { assertCanViewWorkOrder } from '../../utils/workOrderAccess'
 
@@ -21,6 +22,14 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 404, statusMessage: 'İş emri bulunamadı' })
   }
   assertCanViewWorkOrder(payload, workOrder)
+
+  // Atanan personelin adı — listede/detayda "kime atanmış" görünür olsun diye
+  // (aksi halde diğer personel "size atanmamış" hatasını neden aldığını göremiyor).
+  let atananAd: string | null = null
+  if (workOrder.atananUserId) {
+    const [assignee] = await db.select({ ad: users.ad }).from(users).where(eq(users.id, workOrder.atananUserId)).limit(1)
+    atananAd = assignee?.ad ?? null
+  }
 
   const [photos, reviews, timeline, usedMaterials] = await Promise.all([
     db.select().from(workOrderPhotos).where(eq(workOrderPhotos.workOrderId, id)),
@@ -46,5 +55,5 @@ export default defineEventHandler(async (event) => {
       .where(eq(workOrderMaterials.workOrderId, id)),
   ])
 
-  return { ...workOrder, photos, reviews, timeline, materials: usedMaterials }
+  return { ...workOrder, atananAd, photos, reviews, timeline, materials: usedMaterials }
 })

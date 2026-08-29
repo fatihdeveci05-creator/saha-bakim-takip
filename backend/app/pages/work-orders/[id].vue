@@ -103,6 +103,7 @@ async function submitReview(sonuc: 'onay' | 'red') {
         </div>
         <div style="margin-top: 12px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; font-size: 13px">
           <div><span class="muted">Tip:</span> {{ tipLabels[wo.tip] }}</div>
+          <div v-if="wo.atananUserId"><span class="muted">Atanan:</span> {{ wo.atananAd ?? `#${wo.atananUserId}` }}</div>
           <div><span class="muted">Bildirim:</span> {{ fmt(wo.reportedAt) }}</div>
           <div><span class="muted">Müdahale başlangıcı:</span> {{ fmt(wo.responseStartedAt) }}</div>
           <div><span class="muted">Çözüldü:</span> {{ fmt(wo.resolvedAt) }}</div>

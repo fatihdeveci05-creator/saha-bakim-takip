@@ -128,6 +128,7 @@ class WorkOrderTimelineEntry {
 }
 
 class WorkOrderDetail extends WorkOrder {
+  final String? atananAd;
   final List<WorkOrderPhoto> photos;
   final List<WorkOrderReview> reviews;
   final List<WorkOrderMaterialUsage> materials;
@@ -145,6 +146,7 @@ class WorkOrderDetail extends WorkOrder {
     required super.responseStartedAt,
     required super.resolvedAt,
     required super.createdAt,
+    required this.atananAd,
     required this.photos,
     required this.reviews,
     required this.materials,
@@ -165,6 +167,7 @@ class WorkOrderDetail extends WorkOrder {
       responseStartedAt: base.responseStartedAt,
       resolvedAt: base.resolvedAt,
       createdAt: base.createdAt,
+      atananAd: json['atananAd'] as String?,
       photos: (json['photos'] as List<dynamic>? ?? [])
           .map((e) => WorkOrderPhoto.fromJson(e as Map<String, dynamic>))
           .toList(),

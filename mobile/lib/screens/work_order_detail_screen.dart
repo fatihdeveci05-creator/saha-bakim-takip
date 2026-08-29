@@ -310,6 +310,17 @@ class _WorkOrderDetailScreenState extends State<WorkOrderDetailScreen> {
                   ),
                   if (detail.aciklama != null) ...[const SizedBox(height: 12), Text(detail.aciklama!)],
 
+                  if (detail.atananUserId != null) ...[
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        const Icon(Icons.person_outline, size: 16, color: Colors.grey),
+                        const SizedBox(width: 4),
+                        Text('Atanan: ${detail.atananAd ?? '#${detail.atananUserId}'}', style: const TextStyle(color: Colors.grey)),
+                      ],
+                    ),
+                  ],
+
                   if (detail.atananUserId == null && detail.durum == 'bekliyor' && _workers.isNotEmpty) ...[
                     const SizedBox(height: 12),
                     const Text('Bu iş emri henüz kimseye atanmadı', style: TextStyle(color: Colors.orange, fontSize: 13)),
