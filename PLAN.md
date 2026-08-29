@@ -200,8 +200,10 @@ Flutter uygulama: iş listesi, müdahale başlat/bitir, durum seçimi (Devam Ede
 - Domain+SSL: kullanıcı kararı — **gerekmiyor**, sade `http://45.155.19.196` ile devam.
 - 🔜 Kalan: offline kuyruk, iOS build (Mac gerekiyor, proje zaten hazır — `mobile/ios/`), analiz/trend raporları (red oranı, tekrarlayan arıza — Faz 4'ün konusu, sıradaki odak)
 
-**Faz 4 — Gelişmiş** (Faz 5'ten sonra)
-Tam offline senkronizasyon, red oranı/tekrarlayan arıza trend analizleri
+**Faz 4 — Gelişmiş** (Faz 5'ten sonra) — analiz kısmı başladı (30.08)
+- ✅ Red oranı trendi (aylık, son 6 ay), müdahale/çözüm süresi trendi, tekrarlayan arıza tespiti (son 90 günde 2+ arıza) — Raporlar sayfasında, VPS'te canlı.
+- ✅ Saha/Ekip/Ekipman/Kullanıcı silme (İşveren) — geçmiş verisi olanlar korunuyor, pasife alma öneriliyor.
+- 🔜 Kalan: tam offline senkronizasyon, saha/ünite bazlı arıza sıklığı (istenmedi, atlandı)
 
 ## 7. Açık Kararlar
 
