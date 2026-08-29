@@ -1,7 +1,5 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
-import 'package:geolocator/geolocator.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
@@ -13,6 +11,7 @@ import '../models/equipment.dart';
 import '../models/material_item.dart';
 import '../models/site.dart';
 import '../models/work_order.dart';
+import '../widgets/pending_photos.dart';
 import '../widgets/status_badge.dart';
 import '../widgets/tip_badge.dart';
 import 'photo_viewer_screen.dart';
@@ -41,6 +40,15 @@ class _WorkOrderDetailScreenState extends State<WorkOrderDetailScreen> {
   bool _busy = false;
   String? _error;
   final _gerekceController = TextEditingController();
+
+  // Seri çekim: fotoğraflar önce cihazda tutulur, ağ yüklemesi ancak durum
+  // değiştirilirken (Tamamlandı/N/A/Devam Edecek) toplu yapılır — kullanıcı
+  // arka arkaya fotoğraf çekerken her birinin yüklenmesini beklemesin.
+  final List<PendingPhoto> _pendingPhotos = [];
+  bool _capturingPhoto = false;
+  String? _uploadProgress;
+
+  int get _totalPhotoCount => (_detail?.photos.length ?? 0) + _pendingPhotos.length;
 
   @override
   void initState() {
@@ -108,66 +116,50 @@ class _WorkOrderDetailScreenState extends State<WorkOrderDetailScreen> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message), backgroundColor: Colors.red));
   }
 
+  // Sadece cihazda tutulur, ağ isteği yok — hızlıca art arda çağrılabilir.
   Future<void> _addPhoto() async {
-    setState(() => _busy = true);
+    setState(() => _capturingPhoto = true);
     try {
-      var permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-      }
-      if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
-        await _showError('Fotoğraf için konum izni gerekli');
-        return;
-      }
-
-      final picker = ImagePicker();
-      final photo = await picker.pickImage(source: ImageSource.camera, imageQuality: 70, maxWidth: 1920);
-      if (photo == null) return;
-
-      final position = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
-      );
-
-      // XFile.readAsBytes/MultipartFile.fromBytes kullanılır (File/fromFile web'de çalışmaz).
-      final bytes = await photo.readAsBytes();
-      final sizeKb = bytes.length ~/ 1024;
-
-      final uploadRes = await _dio.post(
-        '/api/uploads',
-        data: FormData.fromMap({'file': MultipartFile.fromBytes(bytes, filename: 'photo.jpg')}),
-      );
-      final url = uploadRes.data['url'] as String;
-
-      await _dio.post(
-        '/api/work-orders/${widget.workOrderId}/photos',
-        data: {
-          'url': url,
-          'gpsLat': position.latitude,
-          'gpsLng': position.longitude,
-          'cekimZamani': DateTime.now().toUtc().toIso8601String(),
-          'boyutKb': sizeKb,
-        },
-      );
-
-      await _load();
-    } on DioException catch (e) {
-      await _showError(e.response?.data?['statusMessage'] as String? ?? 'Fotoğraf eklenemedi');
+      final photo = await capturePendingPhoto();
+      if (photo != null) setState(() => _pendingPhotos.add(photo));
     } catch (e) {
-      await _showError('Fotoğraf eklenemedi: $e');
+      await _showError(e is StateError ? e.message : 'Fotoğraf çekilemedi');
     } finally {
-      if (mounted) setState(() => _busy = false);
+      if (mounted) setState(() => _capturingPhoto = false);
     }
   }
 
   Future<void> _changeStatus(String durum, {String? not}) async {
     setState(() => _busy = true);
     try {
+      // Bekleyen (henüz yüklenmemiş) fotoğraflar varsa durum değişmeden önce
+      // toplu yüklenir — "Tamamlandı" fotoğraf sayısını sunucuda doğruladığı
+      // için bu, herhangi bir durum değişikliğinden önce yapılmalı.
+      if (_pendingPhotos.isNotEmpty) {
+        final toUpload = List<PendingPhoto>.from(_pendingPhotos);
+        await uploadPendingPhotos(
+          _dio,
+          widget.workOrderId,
+          toUpload,
+          onProgress: (done, total) {
+            if (mounted) setState(() => _uploadProgress = 'Fotoğraflar yükleniyor: $done/$total');
+          },
+        );
+        if (mounted) setState(() => _pendingPhotos.removeRange(0, toUpload.length));
+      }
       await _dio.patch('/api/work-orders/${widget.workOrderId}/status', data: {'durum': durum, if (not != null) 'not': not});
       await _load();
     } on DioException catch (e) {
       await _showError(e.response?.data?['statusMessage'] as String? ?? 'Durum güncellenemedi');
+    } catch (e) {
+      await _showError('Fotoğraflar yüklenemedi: $e');
     } finally {
-      if (mounted) setState(() => _busy = false);
+      if (mounted) {
+        setState(() {
+          _busy = false;
+          _uploadProgress = null;
+        });
+      }
     }
   }
 
@@ -398,33 +390,53 @@ class _WorkOrderDetailScreenState extends State<WorkOrderDetailScreen> {
 
                   const Divider(height: 32),
 
-                  Text('Fotoğraflar (${detail.photos.length}/3 min)', style: const TextStyle(fontWeight: FontWeight.bold)),
+                  Text('Fotoğraflar ($_totalPhotoCount/3 min)', style: const TextStyle(fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
                   GridView.builder(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
                     gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3, crossAxisSpacing: 8, mainAxisSpacing: 8),
-                    itemCount: detail.photos.length,
+                    itemCount: detail.photos.length + _pendingPhotos.length,
                     itemBuilder: (context, i) {
-                      final p = detail.photos[i];
-                      return GestureDetector(
-                        onTap: () => Navigator.of(context).push(
-                          MaterialPageRoute(builder: (_) => PhotoViewerScreen(imageUrls: photoUrls, initialIndex: i)),
-                        ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: Image.network('${ApiConfig.baseUrl}${p.url}', fit: BoxFit.cover, errorBuilder: (_, _, _) => Container(color: Colors.grey[300])),
-                        ),
+                      if (i < detail.photos.length) {
+                        final p = detail.photos[i];
+                        return GestureDetector(
+                          onTap: () => Navigator.of(context).push(
+                            MaterialPageRoute(builder: (_) => PhotoViewerScreen(imageUrls: photoUrls, initialIndex: i)),
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: Image.network('${ApiConfig.baseUrl}${p.url}', fit: BoxFit.cover, errorBuilder: (_, _, _) => Container(color: Colors.grey[300])),
+                          ),
+                        );
+                      }
+                      final pendingIndex = i - detail.photos.length;
+                      return PendingPhotoTile(
+                        photo: _pendingPhotos[pendingIndex],
+                        onRemove: () => setState(() => _pendingPhotos.removeAt(pendingIndex)),
                       );
                     },
                   ),
                   if (detail.canChangeStatus) ...[
                     const SizedBox(height: 8),
                     OutlinedButton.icon(
-                      onPressed: _busy ? null : _addPhoto,
+                      onPressed: _capturingPhoto ? null : _addPhoto,
                       icon: const Icon(Icons.camera_alt_outlined),
-                      label: const Text('Fotoğraf Çek'),
+                      label: Text(_capturingPhoto ? 'Açılıyor…' : 'Fotoğraf Çek'),
                     ),
+                    if (_pendingPhotos.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(
+                          '${_pendingPhotos.length} fotoğraf cihazda bekliyor, durum değiştirince yüklenecek',
+                          style: const TextStyle(color: Colors.orange, fontSize: 12),
+                        ),
+                      ),
+                    if (_uploadProgress != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(_uploadProgress!, style: const TextStyle(color: Colors.blue, fontSize: 12)),
+                      ),
                   ],
 
                   const Divider(height: 32),
@@ -449,7 +461,7 @@ class _WorkOrderDetailScreenState extends State<WorkOrderDetailScreen> {
                           FilledButton(onPressed: _busy ? null : () => _changeStatus('devam_edecek'), child: const Text('Müdahale Başlat')),
                         FilledButton(
                           style: FilledButton.styleFrom(backgroundColor: Colors.green),
-                          onPressed: _busy || detail.photos.length < 3 ? null : () => _changeStatus('tamamlandi'),
+                          onPressed: _busy || _totalPhotoCount < 3 ? null : () => _changeStatus('tamamlandi'),
                           child: const Text('Tamamlandı'),
                         ),
                         if (detail.durum == 'devam_edecek')
@@ -457,7 +469,7 @@ class _WorkOrderDetailScreenState extends State<WorkOrderDetailScreen> {
                         OutlinedButton(onPressed: _busy ? null : _confirmNa, child: const Text('N/A')),
                       ],
                     ),
-                    if (detail.photos.length < 3)
+                    if (_totalPhotoCount < 3)
                       const Padding(
                         padding: EdgeInsets.only(top: 8),
                         child: Text('Tamamlandı için en az 3 fotoğraf gerekli', style: TextStyle(color: Colors.orange, fontSize: 12)),

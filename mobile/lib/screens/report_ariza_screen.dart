@@ -1,12 +1,11 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
-import 'package:geolocator/geolocator.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import '../core/api_client.dart';
 import '../models/equipment.dart';
 import '../models/site.dart';
+import '../widgets/pending_photos.dart';
 
 class ReportArizaScreen extends StatefulWidget {
   const ReportArizaScreen({super.key, this.initialSiteId, this.initialEquipmentId});
@@ -33,8 +32,11 @@ class _ReportArizaScreenState extends State<ReportArizaScreen> {
 
   // Fotoğraf isteğe bağlı — sarkan parça, açıkta kalan bir kısım gibi
   // arıza/işverenin özellikle görmesi gereken bir şey varsa eklenebilir.
-  XFile? _photo;
+  // Seri çekim: kullanıcı arka arkaya birden fazla fotoğraf çekebilir, ağ
+  // yüklemesi sadece "Bildir" basılınca yapılır (bkz. pending_photos.dart).
+  final List<PendingPhoto> _photos = [];
   bool _pickingPhoto = false;
+  String? _uploadProgress;
 
   @override
   void initState() {
@@ -73,36 +75,15 @@ class _ReportArizaScreenState extends State<ReportArizaScreen> {
   Future<void> _pickPhoto() async {
     setState(() => _pickingPhoto = true);
     try {
-      final photo = await ImagePicker().pickImage(source: ImageSource.camera, imageQuality: 70, maxWidth: 1920);
-      if (photo != null) setState(() => _photo = photo);
-    } catch (_) {
-      // Kullanıcı kamerayı iptal etmiş olabilir — sessizce yut, foto opsiyonel.
+      final photo = await capturePendingPhoto();
+      if (photo != null) setState(() => _photos.add(photo));
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e is StateError ? e.message : 'Fotoğraf çekilemedi')));
+      }
     } finally {
       if (mounted) setState(() => _pickingPhoto = false);
     }
-  }
-
-  Future<void> _attachPhoto(Dio dio, int workOrderId, XFile photo) async {
-    final position = await Geolocator.getCurrentPosition(
-      locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
-    );
-    // XFile.readAsBytes/MultipartFile.fromBytes kullanılır (File/fromFile web'de çalışmaz).
-    final bytes = await photo.readAsBytes();
-    final uploadRes = await dio.post(
-      '/api/uploads',
-      data: FormData.fromMap({'file': MultipartFile.fromBytes(bytes, filename: 'photo.jpg')}),
-    );
-    final url = uploadRes.data['url'] as String;
-    await dio.post(
-      '/api/work-orders/$workOrderId/photos',
-      data: {
-        'url': url,
-        'gpsLat': position.latitude,
-        'gpsLng': position.longitude,
-        'cekimZamani': DateTime.now().toUtc().toIso8601String(),
-        'boyutKb': bytes.length ~/ 1024,
-      },
-    );
   }
 
   Future<void> _submit() async {
@@ -126,16 +107,23 @@ class _ReportArizaScreenState extends State<ReportArizaScreen> {
         },
       );
 
-      if (_photo != null) {
+      if (_photos.isNotEmpty) {
         final workOrderId = res.data['id'] as int;
         try {
-          await _attachPhoto(dio, workOrderId, _photo!);
+          await uploadPendingPhotos(
+            dio,
+            workOrderId,
+            _photos,
+            onProgress: (done, total) {
+              if (mounted) setState(() => _uploadProgress = '$done/$total fotoğraf yüklendi');
+            },
+          );
         } catch (_) {
           // Arıza zaten bildirildi — foto eklenemese de bildirimi kaybetme,
           // sadece kullanıcıyı bilgilendir.
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Arıza bildirildi ama fotoğraf eklenemedi')),
+              const SnackBar(content: Text('Arıza bildirildi ama fotoğraflar eklenemedi')),
             );
           }
         }
@@ -147,7 +135,12 @@ class _ReportArizaScreenState extends State<ReportArizaScreen> {
     } catch (_) {
       setState(() => _error = 'Bildirim başarısız');
     } finally {
-      if (mounted) setState(() => _submitting = false);
+      if (mounted) {
+        setState(() {
+          _submitting = false;
+          _uploadProgress = null;
+        });
+      }
     }
   }
 
@@ -205,22 +198,26 @@ class _ReportArizaScreenState extends State<ReportArizaScreen> {
                     style: TextStyle(color: Colors.grey, fontSize: 12),
                   ),
                   const SizedBox(height: 8),
-                  if (_photo == null)
-                    OutlinedButton.icon(
-                      icon: const Icon(Icons.camera_alt_outlined),
-                      label: Text(_pickingPhoto ? 'Açılıyor…' : 'Fotoğraf Çek'),
-                      onPressed: _pickingPhoto ? null : _pickPhoto,
-                    )
-                  else
-                    Row(
-                      children: [
-                        const Icon(Icons.check_circle, color: Colors.green, size: 20),
-                        const SizedBox(width: 8),
-                        const Expanded(child: Text('Fotoğraf eklendi')),
-                        TextButton(onPressed: () => setState(() => _photo = null), child: const Text('Kaldır')),
-                      ],
+                  if (_photos.isNotEmpty) ...[
+                    GridView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 4, crossAxisSpacing: 8, mainAxisSpacing: 8),
+                      itemCount: _photos.length,
+                      itemBuilder: (context, i) => PendingPhotoTile(photo: _photos[i], onRemove: () => setState(() => _photos.removeAt(i))),
                     ),
+                    const SizedBox(height: 8),
+                  ],
+                  OutlinedButton.icon(
+                    icon: const Icon(Icons.camera_alt_outlined),
+                    label: Text(_pickingPhoto ? 'Açılıyor…' : (_photos.isEmpty ? 'Fotoğraf Çek' : 'Başka Fotoğraf Çek')),
+                    onPressed: _pickingPhoto ? null : _pickPhoto,
+                  ),
                   const SizedBox(height: 20),
+                  if (_uploadProgress != null) ...[
+                    Text(_uploadProgress!, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                    const SizedBox(height: 8),
+                  ],
                   FilledButton(
                     onPressed: _submitting ? null : _submit,
                     child: Padding(
