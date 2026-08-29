@@ -181,9 +181,18 @@ class _SahaDurumuBodyState extends State<SahaDurumuBody> with SingleTickerProvid
 
   Widget _buildMap() {
     final withCoords = _sites.where((s) => s.lat != null && s.lng != null).toList();
-    final center = withCoords.isNotEmpty ? ll.LatLng(withCoords.first.lat!, withCoords.first.lng!) : const ll.LatLng(41.05, 28.8);
+    final points = withCoords.map((s) => ll.LatLng(s.lat!, s.lng!)).toList();
+    final center = points.isNotEmpty ? points.first : const ll.LatLng(41.05, 28.8);
     return FlutterMap(
-      options: MapOptions(initialCenter: center, initialZoom: 12),
+      // Sabit İstanbul merkez/zoom yerine tüm sahaları kapsayacak şekilde
+      // otomatik yakınlaştır — sadece ilk mount'ta uygulanır.
+      options: MapOptions(
+        initialCenter: center,
+        initialZoom: points.length > 1 ? 12 : 15,
+        initialCameraFit: points.length > 1
+            ? CameraFit.bounds(bounds: LatLngBounds.fromPoints(points), padding: const EdgeInsets.all(40), maxZoom: 15)
+            : null,
+      ),
       children: [
         TileLayer(urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', userAgentPackageName: 'com.sefirox.abbkontrol'),
         MarkerLayer(

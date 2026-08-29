@@ -460,10 +460,21 @@ class _CanliHaritaTabState extends State<_CanliHaritaTab> {
   Widget build(BuildContext context) {
     if (_loading) return const Center(child: CircularProgressIndicator());
 
-    final center = _locations.isNotEmpty ? ll.LatLng(_locations.first.lat, _locations.first.lng) : const ll.LatLng(41.05, 28.8);
+    final points = _locations.map((l) => ll.LatLng(l.lat, l.lng)).toList();
+    final center = points.isNotEmpty ? points.first : const ll.LatLng(41.05, 28.8);
 
     return FlutterMap(
-      options: MapOptions(initialCenter: center, initialZoom: 12),
+      // Sabit İstanbul merkez/zoom yerine tüm personel konumlarını kapsayacak
+      // şekilde otomatik yakınlaştır. `initialCameraFit` sadece ilk mount'ta
+      // uygulanır — periyodik yenilemede (setState) kullanıcının haritada
+      // gezindiği görünümü sıfırlamaz.
+      options: MapOptions(
+        initialCenter: center,
+        initialZoom: points.length > 1 ? 12 : 15,
+        initialCameraFit: points.length > 1
+            ? CameraFit.bounds(bounds: LatLngBounds.fromPoints(points), padding: const EdgeInsets.all(40), maxZoom: 15)
+            : null,
+      ),
       children: [
         TileLayer(
           urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
