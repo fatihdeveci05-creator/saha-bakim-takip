@@ -185,12 +185,14 @@ Flutter uygulama: iş listesi, müdahale başlat/bitir, durum seçimi (Devam Ede
 **Faz 3 — Denetim + Raporlama + İşveren Mobil** ✅ tamamlandı
 İşveren denetim kuyruğu (onay/red akışı + gerekçe + geçmiş) hem web hem mobil, Canlı Harita, dashboard, raporlar + export, push bildirim (FCM) — **canlı deploy'da doğrulandı** (29.08).
 
-**Faz 5 — Rol Genişletmesi + Kontrol Ekibi Konum Akışı** 🔜 sıradaki (29.08 eklendi)
-- Rol yeniden yapılandırma: Sorumlu → **Yüklenici** (yetkileri genişletildi: tüm sahayı görme, iş tamamlama, rapor export), yetki matrisi (Bölüm 2) uygulanacak
-- Hesap oluşturma kısıtları: İşveren herkesi, Yüklenici sadece saha personelini oluşturabilir
-- Günlük görev ataması: `users.gunluk_gorev_tipi` alanı + atama ekranı (İşveren/Yüklenici'de)
-- **Kontrol Ekibi konum-tabanlı denetim akışı**: 100m yarıçap algılama, otomatik ekipman geçişi, "Sorun Yok" hızlı onay, `equipment.aktif` alanı
-- Ünite künyesi: Bakım Ekibi'nin geçmiş arıza notlarını görebilmesi
+**Faz 5 — Rol Genişletmesi + Kontrol Ekibi Konum Akışı** ✅ büyük ölçüde tamamlandı (29.08)
+- Rol yeniden yapılandırma: Sorumlu → **Yüklenici** (yetkileri genişletildi: tüm sahayı görme, iş tamamlama, rapor export), yetki matrisi (Bölüm 2) uygulandı
+- Hesap oluşturma kısıtları: İşveren herkesi, Yüklenici sadece saha personelini oluşturabilir — tamamlandı
+- Günlük görev ataması: ayrı bir alan yerine `users.rol`+`users.takimId` mutable yaklaşımıyla çözüldü (daha basit)
+- **Kontrol Ekibi konum-tabanlı denetim akışı**: 100m yarıçap algılama, otomatik ekipman geçişi, "Sorun Yok" hızlı onay, `equipment.aktif` alanı — tamamlandı, VPS'te canlı
+- Ünite künyesi (`GET /api/equipment/:id/history`): tüm roller geçmişi görebiliyor — tamamlandı
+- **Saha Durumu** (renkli grid+harita, İşveren+Yüklenici görür): web `/saha-durumu` + `/saha-haritasi`, mobil `SahaDurumuBody` (İşveren'de sekme, Yüklenici'de `sorumlu` için AppBar girişi) — tamamlandı, VPS'te canlı (29.08)
+- 🔜 Kalan: offline kuyruk, arka planda gerçek foreground-service konum takibi, mobil tarafın emülatörde görsel doğrulaması
 
 **Faz 4 — Gelişmiş** (Faz 5'ten sonra)
 Tam offline senkronizasyon, red oranı/tekrarlayan arıza trend analizleri
