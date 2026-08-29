@@ -49,7 +49,17 @@ class _SiteStatus {
           .map(_SiteStatusEquipment.fromJson)
           .toList();
 
-  String get sonKontrolLabel => sonKontrol == null ? 'Kontrol edilmedi' : DateFormat('dd.MM.yyyy HH:mm').format(sonKontrol!.toLocal());
+  String get _relativeTime {
+    final diff = DateTime.now().difference(sonKontrol!);
+    if (diff.inMinutes < 1) return 'az önce';
+    if (diff.inMinutes < 60) return '${diff.inMinutes} dakika önce';
+    if (diff.inHours < 24) return '${diff.inHours} saat önce';
+    return '${diff.inDays} gün önce';
+  }
+
+  String get sonKontrolLabel => sonKontrol == null
+      ? 'Kontrol edilmedi'
+      : '$_relativeTime (${DateFormat('dd.MM.yyyy HH:mm').format(sonKontrol!.toLocal())})';
 }
 
 const Map<String, Color> _renkColor = {'kirmizi': Colors.red, 'sari': Colors.orange, 'yesil': Colors.green};

@@ -23,9 +23,19 @@ const { data: items, pending, error, refresh } = await useAsyncData('saha-durumu
 const tipLabels: Record<string, string> = { asansor: 'Asansör', yuruyen_merdiven: 'Yürüyen Merdiven' }
 const renkLabels: Record<string, string> = { kirmizi: 'Sorun var', sari: 'Bakımda', yesil: 'Sorun yok' }
 
+function relativeTime(d: string) {
+  const diffMin = Math.floor((Date.now() - new Date(d).getTime()) / 60000)
+  if (diffMin < 1) return 'az önce'
+  if (diffMin < 60) return `${diffMin} dakika önce`
+  const diffHour = Math.floor(diffMin / 60)
+  if (diffHour < 24) return `${diffHour} saat önce`
+  const diffDay = Math.floor(diffHour / 24)
+  return `${diffDay} gün önce`
+}
+
 function fmtSonKontrol(d: string | null) {
   if (!d) return 'Kontrol edilmedi'
-  return new Date(d).toLocaleString('tr-TR')
+  return `${relativeTime(d)} (${new Date(d).toLocaleString('tr-TR')})`
 }
 
 const acikId = ref<number | null>(null)
