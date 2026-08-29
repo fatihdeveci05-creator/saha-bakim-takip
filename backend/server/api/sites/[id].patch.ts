@@ -10,6 +10,9 @@ const bodySchema = z.object({
   lat: z.number().optional(),
   lng: z.number().optional(),
   denetciUserId: z.number().int().nullable().optional(),
+  // Ekipmanı olan bir saha silinemez (bkz. DELETE) — bunun yerine pasife
+  // alınarak Saha Durumu/Saha Haritası/yeni ekipman formundan çıkarılabilir.
+  aktif: z.boolean().optional(),
 })
 
 export default defineEventHandler(async (event) => {

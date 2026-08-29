@@ -1,0 +1,1 @@
+ALTER TABLE `sites` ADD `aktif` boolean DEFAULT true NOT NULL;

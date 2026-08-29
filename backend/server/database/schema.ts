@@ -66,6 +66,9 @@ export const sites = mysqlTable('sites', {
   lat: decimal('lat', { precision: 10, scale: 7 }),
   lng: decimal('lng', { precision: 10, scale: 7 }),
   denetciUserId: int('denetci_user_id'),
+  // Ekipman geçmişi olan bir saha silinemez (bkz. DELETE) — bunun yerine
+  // pasife alınarak Saha Durumu/Saha Haritası/yeni ekipman formundan çıkarılabilir.
+  aktif: boolean('aktif').notNull().default(true),
   createdAt: timestamp('created_at').notNull().defaultNow(),
 })
 

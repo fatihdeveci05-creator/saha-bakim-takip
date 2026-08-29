@@ -3,13 +3,23 @@ import type { Site } from '~/types'
 
 const { apiFetch } = useApi()
 const auth = useAuth()
-const { data: items, pending, error, refresh } = await useAsyncData('sites', () => apiFetch<Site[]>('/api/sites'))
+const showInactive = ref(false)
+const { data: items, pending, error, refresh } = await useAsyncData(
+  'sites',
+  () => apiFetch<Site[]>(`/api/sites${showInactive.value ? '?includeInactive=1' : ''}`),
+  { watch: [showInactive] },
+)
 
 const showForm = ref(false)
 const form = reactive({ ad: '', adres: '', lat: '', lng: '' })
 const formError = ref('')
 const saving = ref(false)
 const deleteError = ref('')
+
+async function toggleAktif(s: Site) {
+  await apiFetch(`/api/sites/${s.id}`, { method: 'PATCH', body: { aktif: !s.aktif } })
+  await refresh()
+}
 
 async function deleteSite(s: Site) {
   if (!confirm(`"${s.ad}" sahasını silmek istediğinize emin misiniz?`)) return
@@ -53,7 +63,12 @@ async function submit() {
   <div>
     <div class="page-header">
       <h1>Sahalar</h1>
-      <button class="btn btn-primary" @click="showForm = !showForm">{{ showForm ? 'Vazgeç' : '+ Yeni Saha' }}</button>
+      <div style="display: flex; align-items: center; gap: 12px">
+        <label style="display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: normal">
+          <input v-model="showInactive" type="checkbox" /> Pasifleri göster
+        </label>
+        <button class="btn btn-primary" @click="showForm = !showForm">{{ showForm ? 'Vazgeç' : '+ Yeni Saha' }}</button>
+      </div>
     </div>
 
     <form v-if="showForm" class="card" style="margin-bottom: 16px" @submit.prevent="submit">
@@ -80,6 +95,7 @@ async function submit() {
             <th>Ad</th>
             <th>Adres</th>
             <th>Konum</th>
+            <th>Durum</th>
             <th v-if="auth.user.value?.rol === 'yonetici'"></th>
           </tr>
         </thead>
@@ -89,7 +105,9 @@ async function submit() {
             <td>{{ s.ad }}</td>
             <td>{{ s.adres ?? '—' }}</td>
             <td>{{ s.lat && s.lng ? `${s.lat}, ${s.lng}` : '—' }}</td>
-            <td v-if="auth.user.value?.rol === 'yonetici'">
+            <td><span class="badge" :class="s.aktif ? 'badge-onaylandi' : 'badge-reddedildi'">{{ s.aktif ? 'Aktif' : 'Pasif' }}</span></td>
+            <td v-if="auth.user.value?.rol === 'yonetici'" style="display: flex; gap: 6px">
+              <button class="btn" @click="toggleAktif(s)">{{ s.aktif ? 'Pasife al' : 'Aktifleştir' }}</button>
               <button class="btn btn-danger" @click="deleteSite(s)">Sil</button>
             </td>
           </tr>

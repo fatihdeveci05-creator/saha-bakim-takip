@@ -36,6 +36,13 @@
       "when": 1787998036057,
       "tag": "0004_naive_mesmero",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "5",
+      "when": 1788040584156,
+      "tag": "0005_slimy_starfox",
+      "breakpoints": true
     }
   ]
 }

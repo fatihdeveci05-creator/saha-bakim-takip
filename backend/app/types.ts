@@ -14,6 +14,7 @@ export interface Site {
   lat: string | null
   lng: string | null
   denetciUserId: number | null
+  aktif: boolean
   createdAt: string
 }
 
