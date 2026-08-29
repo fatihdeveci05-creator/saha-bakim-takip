@@ -6,9 +6,11 @@ import 'package:provider/provider.dart';
 
 import 'core/api_client.dart';
 import 'core/auth_service.dart';
+import 'core/constants.dart';
 import 'core/navigation.dart';
 import 'screens/employer_home_screen.dart';
 import 'screens/home_screen.dart';
+import 'screens/kontrol_home_screen.dart';
 import 'screens/login_screen.dart';
 import 'services/location_service.dart';
 import 'services/notification_service.dart';
@@ -107,7 +109,9 @@ class _RootGateState extends State<_RootGate> with WidgetsBindingObserver {
         final notificationService = context.read<NotificationService>();
         notificationService.start();
         if (isAltYuklenici) {
-          context.read<LocationService>().start();
+          context.read<LocationService>().start(
+            interval: auth.currentUser!.isKontrolEkibi ? ApiConfig.kontrolLocationInterval : ApiConfig.locationInterval,
+          );
         }
         if (!kIsWeb) {
           PushService(context.read<ApiClient>(), onForegroundMessage: notificationService.refresh).init();
@@ -117,6 +121,10 @@ class _RootGateState extends State<_RootGate> with WidgetsBindingObserver {
 
     if (!auth.currentUser!.isAltYuklenici) {
       return const EmployerHomeScreen();
+    }
+
+    if (auth.currentUser!.isKontrolEkibi) {
+      return const KontrolHomeScreen();
     }
 
     return const HomeScreen();

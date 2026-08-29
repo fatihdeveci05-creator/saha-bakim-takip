@@ -5,7 +5,9 @@ import 'package:geolocator/geolocator.dart';
 import '../core/api_client.dart';
 import '../core/constants.dart';
 
-/// Uygulama açıkken (foreground) ~1 dakikada bir konum gönderir.
+/// Uygulama açıkken (foreground) periyodik olarak konum gönderir — varsayılan
+/// periyot 1 dk, Kontrol Ekibi için (100m yarıçaplı ekipman algılaması için)
+/// `start(interval: ApiConfig.kontrolLocationInterval)` ile daha sık çağrılır.
 ///
 /// NOT: Bu, PLAN.md'deki "arka planda ~1 dk'da bir konum güncellemesi"
 /// gereksiniminin sadece uygulama açıkken çalışan bir sürümüdür. Uygulama
@@ -18,6 +20,11 @@ class LocationService {
 
   final ApiClient _apiClient;
   Timer? _timer;
+  final _positionController = StreamController<Position>.broadcast();
+
+  /// Her başarılı konum okumasında yayınlanır — Kontrol Ekibi ekranı bunu
+  /// dinleyerek en yakın ekipmanı yeniden sorgular.
+  Stream<Position> get positionStream => _positionController.stream;
 
   Future<bool> _ensurePermission() async {
     var permission = await Geolocator.checkPermission();
@@ -39,6 +46,7 @@ class LocationService {
       final position = await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
       );
+      if (!_positionController.isClosed) _positionController.add(position);
       await _apiClient.dio.post(
         '/api/locations',
         data: {'lat': position.latitude, 'lng': position.longitude},
@@ -48,10 +56,10 @@ class LocationService {
     }
   }
 
-  void start() {
+  void start({Duration interval = ApiConfig.locationInterval}) {
     if (_timer != null) return;
     unawaited(_sendOnce());
-    _timer = Timer.periodic(ApiConfig.locationInterval, (_) => _sendOnce());
+    _timer = Timer.periodic(interval, (_) => _sendOnce());
   }
 
   void stop() {

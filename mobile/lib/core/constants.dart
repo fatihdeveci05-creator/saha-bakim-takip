@@ -7,4 +7,7 @@ class ApiConfig {
 
   /// Alt yüklenici saha personeli için arka plan konum gönderim periyodu.
   static const Duration locationInterval = Duration(minutes: 1);
+
+  /// Kontrol Ekibi için daha sık — 100m yarıçaplı ekipman algılamasını kaçırmamak için.
+  static const Duration kontrolLocationInterval = Duration(seconds: 15);
 }

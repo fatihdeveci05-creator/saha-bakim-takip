@@ -16,4 +16,5 @@ class AuthUser {
   );
 
   bool get isAltYuklenici => taraf == 'alt_yuklenici';
+  bool get isKontrolEkibi => rol == 'kontrol_ekibi';
 }
