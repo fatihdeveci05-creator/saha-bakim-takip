@@ -5,11 +5,11 @@ import { periodQueryString } from '~/utils/dateRange'
  * Dönem filtresini (Bugün/Bu Hafta/Bu Ay/Özel Tarih Aralığı) URL query'sinde
  * tutar — sayfadan çıkıp geri dönünce veya yenilenince filtre korunur.
  */
-export function useDateFilter() {
+export function useDateFilter(defaultPeriod: Period = '') {
   const route = useRoute()
   const router = useRouter()
 
-  const period = ref<Period>((route.query.period as Period) || '')
+  const period = ref<Period>((route.query.period as Period) || defaultPeriod)
   const customFrom = ref((route.query.from as string) || '')
   const customTo = ref((route.query.to as string) || '')
 

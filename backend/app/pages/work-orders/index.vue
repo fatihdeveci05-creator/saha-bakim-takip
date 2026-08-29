@@ -8,7 +8,9 @@ const auth = useAuth()
 const route = useRoute()
 const router = useRouter()
 
-const { period: periodFilter, customFrom, customTo, queryString } = useDateFilter()
+// İş Emirleri listesi süresiz uzamasın diye varsayılan olarak "Bugün" — istenirse
+// filtreden Bu Hafta/Bu Ay/Tüm Zamanlar/Özel Aralık seçilebilir.
+const { period: periodFilter, customFrom, customTo, queryString } = useDateFilter('bugun')
 const durumFilter = ref<Durum | ''>((route.query.durum as Durum) || '')
 
 watch(durumFilter, () => {

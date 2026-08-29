@@ -6,7 +6,7 @@ import { workOrders, workOrderPhotos, workOrderTimeline } from '../../../databas
 import { canClaimUnassignedWorkOrder } from '../../../utils/workOrderAccess'
 
 const bodySchema = z.object({
-  durum: z.enum(['devam_edecek', 'tamamlandi', 'na']),
+  durum: z.enum(['devam_edecek', 'tamamlandi', 'na', 'bekliyor']),
   not: z.string().max(500).optional(),
 })
 
@@ -56,6 +56,15 @@ export default defineEventHandler(async (event) => {
     if (!workOrder.responseStartedAt) {
       updates.responseStartedAt = now
     }
+  } else if (body.durum === 'bekliyor') {
+    // "Devam Edecek" (elden ele) — müdahale başlamıştı ama bu kişi/ekip
+    // tamamlayamadı, iş tekrar açık havuza döner ki başka bir arıza/bakım
+    // ekibi üyesi devam edebilsin. Çözüldü ANLAMINA GELMEZ (sadece 'tamamlandi'
+    // → 'onaylandi' akışı çözüldü sayılır).
+    if (workOrder.durum !== 'devam_edecek') {
+      throw createError({ statusCode: 409, statusMessage: 'Sadece müdahalesi başlamış bir iş yeniden açılabilir' })
+    }
+    updates.atananUserId = null
   }
 
   updates.durum = finalDurum

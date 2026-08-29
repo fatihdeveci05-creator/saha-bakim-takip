@@ -211,6 +211,35 @@ class _WorkOrderDetailScreenState extends State<WorkOrderDetailScreen> {
     await _changeStatus('na', not: not.isEmpty ? null : not);
   }
 
+  // "Devam Edecek" — müdahale başladı ama bu ekip/kişi tamamlayamadı, iş
+  // tekrar açık havuza (bekliyor) döner ve atama silinir ki başka bir
+  // arıza/bakım ekibi üyesi devam edebilsin. Bu, "çözüldü" anlamına GELMEZ.
+  Future<void> _confirmHandoff() async {
+    final notController = TextEditingController();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Devam Edecek'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Bu iş tamamlanamadı, tekrar açık havuza gönderilecek — başka bir arıza/bakım ekibi üyesi devam edebilir. Bu, çözüldü anlamına gelmez.'),
+            const SizedBox(height: 12),
+            TextField(controller: notController, decoration: const InputDecoration(labelText: 'Neden devam edilemedi? (isteğe bağlı)'), maxLines: 2),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Vazgeç')),
+          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Onayla')),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    final not = notController.text.trim();
+    await _changeStatus('bekliyor', not: not.isEmpty ? null : not);
+  }
+
   Future<void> _addMaterial() async {
     if (_materials.isEmpty) {
       await _showError('Tanımlı malzeme yok');
@@ -423,6 +452,8 @@ class _WorkOrderDetailScreenState extends State<WorkOrderDetailScreen> {
                           onPressed: _busy || detail.photos.length < 3 ? null : () => _changeStatus('tamamlandi'),
                           child: const Text('Tamamlandı'),
                         ),
+                        if (detail.durum == 'devam_edecek')
+                          OutlinedButton(onPressed: _busy ? null : _confirmHandoff, child: const Text('Devam Edecek')),
                         OutlinedButton(onPressed: _busy ? null : _confirmNa, child: const Text('N/A')),
                       ],
                     ),

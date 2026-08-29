@@ -57,7 +57,7 @@ class WorkOrder {
 
   static const durumLabels = {
     'bekliyor': 'Bekliyor',
-    'devam_edecek': 'Devam Edecek',
+    'devam_edecek': 'Müdahale Başladı',
     'tamamlandi': 'Tamamlandı',
     'onay_bekliyor': 'Onay Bekliyor',
     'onaylandi': 'Onaylandı',

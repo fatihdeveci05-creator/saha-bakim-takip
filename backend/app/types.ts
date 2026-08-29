@@ -154,7 +154,7 @@ export interface ReportsData {
 
 export const DURUM_LABELS: Record<Durum, string> = {
   bekliyor: 'Bekliyor',
-  devam_edecek: 'Devam Edecek',
+  devam_edecek: 'Müdahale Başladı',
   tamamlandi: 'Tamamlandı',
   onay_bekliyor: 'Onay Bekliyor',
   onaylandi: 'Onaylandı',
