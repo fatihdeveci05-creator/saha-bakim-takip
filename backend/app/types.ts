@@ -140,6 +140,27 @@ export interface MalzemeTuketimi {
   toplamMiktar: number
 }
 
+export interface RedOraniTrendItem {
+  period: string
+  toplamDenetim: number
+  red: number
+  oran: number | null
+}
+
+export interface SureTrendItem {
+  period: string
+  ortMudahaleSaat: number | null
+  ortCozumSaat: number | null
+}
+
+export interface TekrarlayanAriza {
+  equipmentId: number
+  siteAd: string
+  ekipmanLabel: string
+  sonDoksanGunArizaSayisi: number
+  sonArizaTarihi: string
+}
+
 export interface ReportsData {
   personelPerformans: PersonelPerformans[]
   redOrani: {
@@ -150,6 +171,9 @@ export interface ReportsData {
     byUser: RedOraniByUser[]
   }
   malzemeTuketimi: MalzemeTuketimi[]
+  redOraniTrend: RedOraniTrendItem[]
+  sureTrend: SureTrendItem[]
+  tekrarlayanArizalar: TekrarlayanAriza[]
 }
 
 export const DURUM_LABELS: Record<Durum, string> = {

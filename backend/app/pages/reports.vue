@@ -26,6 +26,28 @@ function fmtOran(v: number | null) {
   return `%${(v * 100).toFixed(0)}`
 }
 
+function fmtDate(v: string) {
+  return new Date(v).toLocaleDateString('tr-TR')
+}
+
+const MAX_BAR_PX = 120
+
+function redOranBarHeight(oran: number | null) {
+  if (oran === null) return 2
+  return Math.max(oran * MAX_BAR_PX, 2)
+}
+
+const maxSureSaat = computed(() => {
+  if (!data.value) return 1
+  const values = data.value.sureTrend.flatMap((t) => [t.ortMudahaleSaat, t.ortCozumSaat]).filter((v): v is number => v !== null)
+  return values.length ? Math.max(...values) : 1
+})
+
+function sureBarHeight(saat: number | null) {
+  if (saat === null || maxSureSaat.value <= 0) return 2
+  return Math.max((saat / maxSureSaat.value) * MAX_BAR_PX, 2)
+}
+
 async function exportExcel() {
   if (!data.value) return
   exporting.value = true
@@ -55,6 +77,25 @@ async function exportExcel() {
         name: 'Malzeme Tüketimi',
         headers: ['Malzeme', 'Birim', 'Toplam Miktar'],
         rows: data.value.malzemeTuketimi.map((m) => [m.ad, m.birim, Number(m.toplamMiktar.toFixed(2))]),
+      },
+      {
+        name: 'Red Oranı Trendi',
+        headers: ['Ay', 'Toplam Denetim', 'Red', 'Red Oranı (%)'],
+        rows: data.value.redOraniTrend.map((t) => [t.period, t.toplamDenetim, t.red, t.oran !== null ? Number((t.oran * 100).toFixed(1)) : null]),
+      },
+      {
+        name: 'Süre Trendi',
+        headers: ['Ay', 'Ort. Müdahale (sa)', 'Ort. Çözüm (sa)'],
+        rows: data.value.sureTrend.map((t) => [
+          t.period,
+          t.ortMudahaleSaat !== null ? Number(t.ortMudahaleSaat.toFixed(2)) : null,
+          t.ortCozumSaat !== null ? Number(t.ortCozumSaat.toFixed(2)) : null,
+        ]),
+      },
+      {
+        name: 'Tekrarlayan Arızalar',
+        headers: ['Saha', 'Ünite', 'Son 90 Günde Arıza', 'Son Arıza'],
+        rows: data.value.tekrarlayanArizalar.map((t) => [t.siteAd, t.ekipmanLabel, t.sonDoksanGunArizaSayisi, fmtDate(t.sonArizaTarihi)]),
       },
     ])
   } finally {
@@ -160,6 +201,80 @@ async function exportExcel() {
               </tr>
               <tr v-if="!data.redOrani.byUser.length">
                 <td colspan="4" class="muted">Kayıt yok</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div>
+        <h2 style="font-size: 16px; margin: 0 0 10px">Red Oranı Trendi (Son 6 Ay)</h2>
+        <div class="muted" style="font-size: 12px; margin-bottom: 8px">Dönem filtresinden bağımsız, her zaman son 6 ayı gösterir.</div>
+        <div class="card">
+          <div v-if="!data.redOraniTrend.length" class="muted">Yeterli veri yok.</div>
+          <div v-else style="display: flex; align-items: flex-end; gap: 12px; height: 170px">
+            <div v-for="t in data.redOraniTrend" :key="t.period" style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end">
+              <div style="font-size: 11px; margin-bottom: 4px">{{ fmtOran(t.oran) }}</div>
+              <div
+                :style="{
+                  width: '60%',
+                  height: `${redOranBarHeight(t.oran)}px`,
+                  background: (t.oran ?? 0) > 0.3 ? '#dc2626' : '#f59e0b',
+                  borderRadius: '4px 4px 0 0',
+                }"
+              />
+              <div class="muted" style="font-size: 11px; margin-top: 4px">{{ t.period }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <h2 style="font-size: 16px; margin: 0 0 10px">Müdahale / Çözüm Süresi Trendi (Son 6 Ay)</h2>
+        <div class="card">
+          <div v-if="!data.sureTrend.length" class="muted">Yeterli veri yok.</div>
+          <template v-else>
+            <div style="display: flex; gap: 16px; font-size: 12px; margin-bottom: 8px">
+              <div style="display: flex; align-items: center; gap: 4px"><span style="width: 10px; height: 10px; background: #2563eb; border-radius: 2px; display: inline-block" /> Ort. Müdahale</div>
+              <div style="display: flex; align-items: center; gap: 4px"><span style="width: 10px; height: 10px; background: #16a34a; border-radius: 2px; display: inline-block" /> Ort. Çözüm</div>
+            </div>
+            <div style="display: flex; align-items: flex-end; gap: 12px; height: 170px">
+              <div v-for="t in data.sureTrend" :key="t.period" style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end">
+                <div style="display: flex; align-items: flex-end; gap: 4px">
+                  <div :style="{ width: '14px', height: `${sureBarHeight(t.ortMudahaleSaat)}px`, background: '#2563eb', borderRadius: '3px 3px 0 0' }" :title="fmtSaat(t.ortMudahaleSaat)" />
+                  <div :style="{ width: '14px', height: `${sureBarHeight(t.ortCozumSaat)}px`, background: '#16a34a', borderRadius: '3px 3px 0 0' }" :title="fmtSaat(t.ortCozumSaat)" />
+                </div>
+                <div class="muted" style="font-size: 11px; margin-top: 4px">{{ t.period }}</div>
+              </div>
+            </div>
+          </template>
+        </div>
+      </div>
+
+      <div>
+        <h2 style="font-size: 16px; margin: 0 0 10px">Tekrarlayan Arızalar</h2>
+        <div class="muted" style="font-size: 12px; margin-bottom: 8px">Son 90 günde aynı ünitede 2+ arıza bildirimi — muhtemel kalıcı sorun işareti.</div>
+        <div class="card" style="padding: 0">
+          <table>
+            <thead>
+              <tr>
+                <th>Saha</th>
+                <th>Ünite</th>
+                <th>Son 90 Günde Arıza</th>
+                <th>Son Arıza</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="t in data.tekrarlayanArizalar" :key="t.equipmentId">
+                <td>{{ t.siteAd }}</td>
+                <td>{{ t.ekipmanLabel }}</td>
+                <td><span class="badge badge-reddedildi">{{ t.sonDoksanGunArizaSayisi }}</span></td>
+                <td>{{ fmtDate(t.sonArizaTarihi) }}</td>
+                <td><NuxtLink class="btn" :to="`/equipment/${t.equipmentId}`">Künyeyi Gör</NuxtLink></td>
+              </tr>
+              <tr v-if="!data.tekrarlayanArizalar.length">
+                <td colspan="5" class="muted">Tekrarlayan arıza yok.</td>
               </tr>
             </tbody>
           </table>
