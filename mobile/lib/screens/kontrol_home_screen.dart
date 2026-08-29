@@ -109,7 +109,12 @@ class _KontrolHomeScreenState extends State<KontrolHomeScreen> {
   }
 
   Future<void> _sorunVar(int equipmentId) async {
-    await Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ReportArizaScreen()));
+    final site = _nearby?['site'] as Map<String, dynamic>?;
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ReportArizaScreen(initialSiteId: site?['id'] as int?, initialEquipmentId: equipmentId),
+      ),
+    );
     if (_lastPosition != null) await _load(_lastPosition!);
   }
 

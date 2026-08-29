@@ -7,7 +7,13 @@ import '../models/equipment.dart';
 import '../models/site.dart';
 
 class ReportArizaScreen extends StatefulWidget {
-  const ReportArizaScreen({super.key});
+  const ReportArizaScreen({super.key, this.initialSiteId, this.initialEquipmentId});
+
+  /// Kontrol Ekibi "Sorun Var" derken, zaten yanında durduğu ekipmanı/sahayı
+  /// önceden seçili getirmek için — kullanıcı dropdown'dan tekrar seçmek
+  /// zorunda kalmasın.
+  final int? initialSiteId;
+  final int? initialEquipmentId;
 
   @override
   State<ReportArizaScreen> createState() => _ReportArizaScreenState();
@@ -26,6 +32,8 @@ class _ReportArizaScreenState extends State<ReportArizaScreen> {
   @override
   void initState() {
     super.initState();
+    _selectedSiteId = widget.initialSiteId;
+    _selectedEquipmentId = widget.initialEquipmentId;
     _load();
   }
 
