@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:intl/intl.dart';
 import 'package:latlong2/latlong.dart' as ll;
 import 'package:provider/provider.dart';
 
@@ -33,6 +34,7 @@ class _SiteStatus {
   final double? lat;
   final double? lng;
   final String durum;
+  final DateTime? sonKontrol;
   final List<_SiteStatusEquipment> equipment;
 
   _SiteStatus.fromJson(Map<String, dynamic> json)
@@ -41,10 +43,13 @@ class _SiteStatus {
       lat = json['lat'] != null ? double.tryParse(json['lat'] as String) : null,
       lng = json['lng'] != null ? double.tryParse(json['lng'] as String) : null,
       durum = json['durum'] as String,
+      sonKontrol = json['sonKontrol'] != null ? DateTime.parse(json['sonKontrol'] as String) : null,
       equipment = (json['equipment'] as List<dynamic>)
           .cast<Map<String, dynamic>>()
           .map(_SiteStatusEquipment.fromJson)
           .toList();
+
+  String get sonKontrolLabel => sonKontrol == null ? 'Kontrol edilmedi' : DateFormat('dd.MM.yyyy HH:mm').format(sonKontrol!.toLocal());
 }
 
 const Map<String, Color> _renkColor = {'kirmizi': Colors.red, 'sari': Colors.orange, 'yesil': Colors.green};
@@ -142,7 +147,7 @@ class _SahaDurumuBodyState extends State<SahaDurumuBody> with SingleTickerProvid
               ListTile(
                 leading: CircleAvatar(radius: 6, backgroundColor: _renkColor[site.durum]),
                 title: Text(site.ad),
-                subtitle: Text('${_renkLabel[site.durum]} · ${site.equipment.length} ünite'),
+                subtitle: Text('${_renkLabel[site.durum]} · ${site.equipment.length} ünite · Son kontrol: ${site.sonKontrolLabel}'),
                 trailing: Icon(acik ? Icons.expand_less : Icons.expand_more),
                 onTap: () => setState(() => _acikSiteId = acik ? null : site.id),
               ),

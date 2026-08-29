@@ -13,6 +13,7 @@ import '../models/equipment.dart';
 import '../models/site.dart';
 import '../models/user_location.dart';
 import '../models/work_order.dart';
+import '../widgets/tip_badge.dart';
 import 'assign_work_order_screen.dart';
 import 'notifications_screen.dart';
 import 'saha_durumu_screen.dart';
@@ -163,10 +164,9 @@ class _DenetimKuyruguTabState extends State<_DenetimKuyruguTab> with WidgetsBind
                 final fmt = DateFormat('dd.MM.yyyy HH:mm');
                 return Card(
                   child: ListTile(
+                    leading: TipBadge(tip: wo.tip),
                     title: Text(_equipmentLabel(wo.equipmentId)),
-                    subtitle: Text(
-                      '${wo.tipLabel} · Çözen: ${wo.resolvedByLabel} · ${wo.resolvedAt != null ? fmt.format(wo.resolvedAt!.toLocal()) : '—'}',
-                    ),
+                    subtitle: Text('Çözen: ${wo.resolvedByLabel} · ${wo.resolvedAt != null ? fmt.format(wo.resolvedAt!.toLocal()) : '—'}'),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () async {
                       await Navigator.of(context).push(MaterialPageRoute(builder: (_) => WorkOrderDetailScreen(workOrderId: wo.id)));

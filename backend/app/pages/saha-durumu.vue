@@ -13,6 +13,7 @@ interface SiteStatus {
   lat: string | null
   lng: string | null
   durum: 'kirmizi' | 'sari' | 'yesil'
+  sonKontrol: string | null
   equipment: SiteStatusEquipment[]
 }
 
@@ -21,6 +22,11 @@ const { data: items, pending, error, refresh } = await useAsyncData('saha-durumu
 
 const tipLabels: Record<string, string> = { asansor: 'Asansör', yuruyen_merdiven: 'Yürüyen Merdiven' }
 const renkLabels: Record<string, string> = { kirmizi: 'Sorun var', sari: 'Bakımda', yesil: 'Sorun yok' }
+
+function fmtSonKontrol(d: string | null) {
+  if (!d) return 'Kontrol edilmedi'
+  return new Date(d).toLocaleString('tr-TR')
+}
 
 const acikId = ref<number | null>(null)
 function toggle(id: number) {
@@ -51,6 +57,7 @@ onActivated(() => refresh())
             <span :class="`durum-dot durum-${site.durum}`" />
             <span style="font-weight: 600">{{ site.ad }}</span>
             <span class="muted" style="font-size: 12px">{{ renkLabels[site.durum] }} · {{ site.equipment.length }} ünite</span>
+            <span class="muted" style="font-size: 12px">· Son kontrol: {{ fmtSonKontrol(site.sonKontrol) }}</span>
           </div>
           <span class="muted">{{ acikId === site.id ? '▲' : '▼' }}</span>
         </button>

@@ -7,7 +7,9 @@ import '../core/auth_service.dart';
 import '../models/equipment.dart';
 import '../models/site.dart';
 import '../models/work_order.dart';
+import '../utils/date_range.dart';
 import '../widgets/status_badge.dart';
+import '../widgets/tip_badge.dart';
 import 'assign_work_order_screen.dart';
 import 'notifications_screen.dart';
 import 'report_ariza_screen.dart';
@@ -26,6 +28,13 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
+// "Bugün"/"Bekleyen" hâlâ açık/aktif işleri gösterir — tarihe göre filtrelenmez,
+// aksi halde unutulmuş eski bir arıza görünmez olurdu. Sadece kapanmış kayıtlar
+// (Tamamlanan/Reddedilen) tarih filtresine tabidir; aksi halde liste sınırsız
+// büyür (kullanıcı talebi).
+const _activeDurumlar = {'bekliyor', 'devam_edecek'};
+const _historicalDurumlar = {'onay_bekliyor', 'onaylandi', 'reddedildi', 'na'};
+
 class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   late final TabController _tabController;
   List<WorkOrder> _all = [];
@@ -33,6 +42,9 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   Map<int, Site> _siteById = {};
   bool _loading = true;
   String? _error;
+  Period _period = Period.bugun;
+  DateTime? _customFrom;
+  DateTime? _customTo;
 
   @override
   void initState() {
@@ -61,18 +73,33 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     });
     try {
       final dio = context.read<ApiClient>().dio;
-      final results = await Future.wait([dio.get('/api/work-orders'), dio.get('/api/equipment'), dio.get('/api/sites')]);
+      final range = periodRange(_period, customFrom: _customFrom, customTo: _customTo);
+      final results = await Future.wait([
+        dio.get('/api/work-orders'),
+        dio.get(
+          '/api/work-orders',
+          queryParameters: {
+            if (range.from != null) 'from': range.from!.toUtc().toIso8601String(),
+            if (range.to != null) 'to': range.to!.toUtc().toIso8601String(),
+          },
+        ),
+        dio.get('/api/equipment'),
+        dio.get('/api/sites'),
+      ]);
 
-      final workOrders = (results[0].data as List<dynamic>)
+      final active = (results[0].data as List<dynamic>)
           .map((e) => WorkOrder.fromJson(e as Map<String, dynamic>))
-          .toList();
-      final equipmentList = (results[1].data as List<dynamic>)
+          .where((w) => _activeDurumlar.contains(w.durum));
+      final historical = (results[1].data as List<dynamic>)
+          .map((e) => WorkOrder.fromJson(e as Map<String, dynamic>))
+          .where((w) => _historicalDurumlar.contains(w.durum));
+      final equipmentList = (results[2].data as List<dynamic>)
           .map((e) => Equipment.fromJson(e as Map<String, dynamic>))
           .toList();
-      final siteList = (results[2].data as List<dynamic>).map((e) => Site.fromJson(e as Map<String, dynamic>)).toList();
+      final siteList = (results[3].data as List<dynamic>).map((e) => Site.fromJson(e as Map<String, dynamic>)).toList();
 
       setState(() {
-        _all = workOrders;
+        _all = [...active, ...historical];
         _equipmentById = {for (final e in equipmentList) e.id: e};
         _siteById = {for (final s in siteList) s.id: s};
         _loading = false;
@@ -83,6 +110,52 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         _loading = false;
       });
     }
+  }
+
+  Future<void> _pickPeriod() async {
+    final selected = await showModalBottomSheet<Period>(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 16, 16, 4),
+              child: Align(alignment: Alignment.centerLeft, child: Text('Tamamlanan/Reddedilen için tarih filtresi', style: TextStyle(color: Colors.grey, fontSize: 12))),
+            ),
+            for (final p in Period.values)
+              ListTile(
+                title: Text(periodLabels[p]!),
+                trailing: p == _period ? const Icon(Icons.check, color: Colors.blue) : null,
+                onTap: () => Navigator.pop(context, p),
+              ),
+          ],
+        ),
+      ),
+    );
+    if (selected == null || !mounted) return;
+
+    if (selected == Period.ozel) {
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      final range = await showDateRangePicker(
+        context: context,
+        firstDate: DateTime(today.year - 2),
+        lastDate: today,
+        initialDateRange: _customFrom != null && _customTo != null
+            ? DateTimeRange(start: _customFrom!, end: _customTo!)
+            : DateTimeRange(start: today.subtract(const Duration(days: 7)), end: today),
+      );
+      if (range == null || !mounted) return;
+      setState(() {
+        _period = Period.ozel;
+        _customFrom = range.start;
+        _customTo = range.end;
+      });
+    } else {
+      setState(() => _period = selected);
+    }
+    _load();
   }
 
   List<WorkOrder> _filter(_Tab tab) {
@@ -121,13 +194,24 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('İş Listem'),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('İş Listem'),
+            Text(
+              'Tamamlanan/Reddedilen: ${periodDisplayLabel(_period, customFrom: _customFrom, customTo: _customTo)}',
+              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.normal),
+            ),
+          ],
+        ),
         bottom: TabBar(
           controller: _tabController,
           isScrollable: true,
           tabs: _Tab.values.map((tab) => Tab(text: _tabLabel(tab))).toList(),
         ),
         actions: [
+          IconButton(icon: const Icon(Icons.event_outlined), tooltip: 'Tarih filtresi', onPressed: _pickPeriod),
           if (auth.currentUser?.rol == 'sorumlu')
             IconButton(
               icon: const Icon(Icons.grid_view_outlined),
@@ -206,8 +290,9 @@ class _WorkOrderList extends StatelessWidget {
         final wo = items[index];
         return Card(
           child: ListTile(
+            leading: TipBadge(tip: wo.tip),
             title: Text(equipmentLabel(wo.equipmentId)),
-            subtitle: Text('${wo.tipLabel} · ${wo.reportedAt != null ? fmt.format(wo.reportedAt!.toLocal()) : '—'}'),
+            subtitle: Text(wo.reportedAt != null ? fmt.format(wo.reportedAt!.toLocal()) : '—'),
             trailing: StatusBadge(durum: wo.durum),
             onTap: () async {
               await Navigator.of(context).push(MaterialPageRoute(builder: (_) => WorkOrderDetailScreen(workOrderId: wo.id)));

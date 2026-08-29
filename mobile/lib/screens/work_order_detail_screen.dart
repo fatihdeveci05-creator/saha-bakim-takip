@@ -14,6 +14,7 @@ import '../models/material_item.dart';
 import '../models/site.dart';
 import '../models/work_order.dart';
 import '../widgets/status_badge.dart';
+import '../widgets/tip_badge.dart';
 import 'photo_viewer_screen.dart';
 
 class WorkOrderDetailScreen extends StatefulWidget {
@@ -314,7 +315,10 @@ class _WorkOrderDetailScreenState extends State<WorkOrderDetailScreen> {
                           ],
                         ),
                       ),
-                      StatusBadge(durum: detail.durum),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [TipBadge(tip: detail.tip), const SizedBox(height: 6), StatusBadge(durum: detail.durum)],
+                      ),
                     ],
                   ),
                   if (detail.aciklama != null) ...[const SizedBox(height: 12), Text(detail.aciklama!)],

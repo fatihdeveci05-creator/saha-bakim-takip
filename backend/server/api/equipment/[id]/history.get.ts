@@ -1,4 +1,4 @@
-import { desc, eq } from 'drizzle-orm'
+import { and, desc, eq, ne } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/mysql-core'
 import { requireAuth } from '../../../utils/auth'
 import { useDb } from '../../../database/client'
@@ -6,11 +6,13 @@ import { workOrders, users } from '../../../database/schema'
 
 const resolvedBy = alias(users, 'resolvedBy')
 
-// "Ünite künyesi" — bir ekipmanın TÜM geçmişi (tip farkı gözetmeksizin arıza+bakım+
-// kontrol). Normal iş emri listeleme rol/tipe göre kısıtlıyken (bkz. workOrderAccess),
-// bu endpoint bilinçli olarak geniş: Bakım Ekibi'nin, gittiği ekipmanda Arıza Ekibi'nin
-// bıraktığı geçmiş notları görebilmesi için var (PLAN.md böl. 2). Herkese açık salt
-// okunur referans veri — düzenleme yetkisi vermiyor.
+// "Ünite künyesi" — bir ekipmanın geçmişi (arıza+bakım). Normal iş emri listeleme
+// rol/tipe göre kısıtlıyken (bkz. workOrderAccess), bu endpoint bilinçli olarak geniş:
+// Bakım Ekibi'nin, gittiği ekipmanda Arıza Ekibi'nin bıraktığı geçmiş notları
+// görebilmesi için var (PLAN.md böl. 2). Herkese açık salt okunur referans veri —
+// düzenleme yetkisi vermiyor. Kontrol Ekibi'nin sorun görmediği rutin "Sorun Yok"
+// kayıtları (tip='kontrol') bilinçli olarak dışlanıyor — künye gereksiz kayıtla
+// dolmasın diye (bkz. GET /api/kontrol/check, her zaman durum=onaylandi ile kapanır).
 export default defineEventHandler(async (event) => {
   await requireAuth(event)
   const equipmentId = Number(getRouterParam(event, 'id'))
@@ -28,6 +30,6 @@ export default defineEventHandler(async (event) => {
     })
     .from(workOrders)
     .leftJoin(resolvedBy, eq(resolvedBy.id, workOrders.resolvedByUserId))
-    .where(eq(workOrders.equipmentId, equipmentId))
+    .where(and(eq(workOrders.equipmentId, equipmentId), ne(workOrders.tip, 'kontrol')))
     .orderBy(desc(workOrders.reportedAt))
 })
