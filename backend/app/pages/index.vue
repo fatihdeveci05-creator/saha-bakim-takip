@@ -1,11 +1,38 @@
 <script setup lang="ts">
-import type { WorkOrder } from '~/types'
+import type { WorkOrder, AppUser, Team } from '~/types'
 
 const { apiFetch } = useApi()
 
 const { data: workOrders, pending, error } = await useAsyncData('dashboard-work-orders', () =>
   apiFetch<WorkOrder[]>('/api/work-orders'),
 )
+
+// "Bugünün ekip dağılımı" — hangi personelin hangi rolde/ekipte olduğu
+// ayrı bir tarihli kayıt değil, sadece güncel (mutable) users.rol/takimId
+// (bkz. PLAN.md "günlük görev ataması") — o yüzden burada gösterilen zaten
+// "bugün" demek, ayrı bir geçmiş sorgusu yok.
+const { data: personelList } = await useAsyncData('dashboard-personel', () => apiFetch<AppUser[]>('/api/users'))
+const { data: teamList } = await useAsyncData('dashboard-teams', () => apiFetch<Team[]>('/api/teams'))
+const teamNameById = computed(() => new Map((teamList.value ?? []).map((t) => [t.id, t.ad])))
+
+const rolLabels: Record<string, string> = {
+  sorumlu: 'Sorumlu',
+  ariza_ekibi: 'Arıza Ekibi',
+  bakim_ekibi: 'Bakım Ekibi',
+  kontrol_ekibi: 'Kontrol Ekibi',
+}
+const rolSirasi = ['sorumlu', 'ariza_ekibi', 'bakim_ekibi', 'kontrol_ekibi']
+
+const ekipDagilimi = computed(() => {
+  const aktifSahaPersoneli = (personelList.value ?? []).filter((u) => u.taraf === 'alt_yuklenici' && u.aktif)
+  return rolSirasi
+    .map((rol) => ({
+      rol,
+      label: rolLabels[rol],
+      kisiler: aktifSahaPersoneli.filter((u) => u.rol === rol),
+    }))
+    .filter((g) => g.kisiler.length)
+})
 
 const acikIsSayisi = computed(
   () => workOrders.value?.filter((w) => ['bekliyor', 'devam_edecek', 'onay_bekliyor'].includes(w.durum)).length ?? 0,
@@ -74,6 +101,25 @@ function fmtHours(v: number | null) {
       <div class="stat-card">
         <div class="value">{{ gecikenIsler }}</div>
         <div class="label">Geciken işler (&gt;3 gün)</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2 style="font-size: 16px; margin: 0 0 12px">Bugünün Ekip Dağılımı</h2>
+      <div v-if="!ekipDagilimi.length" class="muted">Aktif saha personeli yok.</div>
+      <div v-else style="display: flex; flex-direction: column; gap: 12px">
+        <div v-for="g in ekipDagilimi" :key="g.rol">
+          <div class="muted" style="font-size: 12px; font-weight: 600; margin-bottom: 4px">{{ g.label }} ({{ g.kisiler.length }})</div>
+          <div style="display: flex; flex-wrap: wrap; gap: 6px">
+            <span
+              v-for="u in g.kisiler"
+              :key="u.id"
+              style="background: var(--bg); border: 1px solid var(--border); border-radius: 999px; padding: 3px 10px; font-size: 12px"
+            >
+              {{ u.ad }} <span v-if="u.takimId" class="muted">({{ teamNameById.get(u.takimId) ?? '—' }})</span>
+            </span>
+          </div>
+        </div>
       </div>
     </div>
 

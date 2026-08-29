@@ -34,7 +34,7 @@ export default defineEventHandler(async (event) => {
 
   const [altYuklenicilar, allWorkOrders, allReviewsRaw, materialUsage] = await Promise.all([
     db
-      .select({ id: users.id, ad: users.ad })
+      .select({ id: users.id, ad: users.ad, takimId: users.takimId })
       .from(users)
       .where(eq(users.taraf, 'alt_yuklenici')),
     workOrderDateConditions.length
@@ -62,14 +62,38 @@ export default defineEventHandler(async (event) => {
     })(),
   ])
 
+  // --- Takım eşleşmesi ---
+  // Arıza/Bakım Ekibi 2-4 kişiden oluşabiliyor; işi hangi takım üyesi
+  // "Tamamlandı" işaretlerse işaretlesin, o iş takımın ortak başarısı
+  // sayılır — sadece tek kişinin hanesine yazılıp diğer takım
+  // arkadaşlarının performansı düşük görünmesin diye (kullanıcı talebi).
+  // Takım üyeliği güncel (users.takimId, "günlük görev" mutable alan) baz
+  // alınır, ayrı bir geçmiş kaydı yok.
+  const teamIdByUserId = new Map(altYuklenicilar.map((u) => [u.id, u.takimId]))
+  const userIdsByTeamId = new Map<number, number[]>()
+  for (const u of altYuklenicilar) {
+    if (u.takimId == null) continue
+    const list = userIdsByTeamId.get(u.takimId) ?? []
+    list.push(u.id)
+    userIdsByTeamId.set(u.takimId, list)
+  }
+  function takimArkadaslariDahil(userId: number): number[] {
+    const takimId = teamIdByUserId.get(userId)
+    if (takimId == null) return [userId]
+    return userIdsByTeamId.get(takimId) ?? [userId]
+  }
+
   // --- Personel performansı ---
   // NOT: atananUserId değil resolvedByUserId (kim fiilen çözdü) baz alınır —
   // Yüklenici başkasının işini tamamlayabiliyor, atanmamış (açık) işler de
-  // uygun rol tarafından çözülebiliyor (atanan_user_id null kalsa bile),
-  // dolayısıyla "kim ne kadar iş çıkardı" sorusunun doğru cevabı bu.
+  // uygun rol tarafından çözülebiliyor (atanan_user_id null kalsa bile).
+  // Çözülen/onaylanan/reddedilen/red oranı istatistikleri, çözen kişinin
+  // TAKIM ARKADAŞLARINA da yazılır (yukarı bakınız) — sadece "atananSayisi"
+  // ve "ortMudahaleSaat" bireysel kalır (bunlar spesifik atama/başlatma
+  // eylemini ölçüyor, takım başarısı değil).
   const personelPerformans = altYuklenicilar.map((u) => {
     const atanan = allWorkOrders.filter((w) => w.atananUserId === u.id)
-    const cozulen = allWorkOrders.filter((w) => w.resolvedByUserId === u.id)
+    const cozulen = allWorkOrders.filter((w) => w.resolvedByUserId != null && takimArkadaslariDahil(w.resolvedByUserId).includes(u.id))
     const mudahaleSaatleri = atanan
       .map((w) => hoursBetween(w.reportedAt, w.responseStartedAt))
       .filter((v): v is number => v !== null)
@@ -86,11 +110,11 @@ export default defineEventHandler(async (event) => {
     }
   })
 
-  // --- Red oranı (genel + personel bazlı) ---
+  // --- Red oranı (genel + personel bazlı, aynı takım-paylaşımlı mantık) ---
   const toplamDenetim = allReviewsRaw.length
   const toplamRed = allReviewsRaw.filter((r) => r.sonuc === 'red').length
   const redOraniByUser = altYuklenicilar.map((u) => {
-    const own = allReviewsRaw.filter((r) => r.resolvedByUserId === u.id)
+    const own = allReviewsRaw.filter((r) => r.resolvedByUserId != null && takimArkadaslariDahil(r.resolvedByUserId).includes(u.id))
     const red = own.filter((r) => r.sonuc === 'red').length
     return { userId: u.id, ad: u.ad, toplamDenetim: own.length, red, oran: own.length ? red / own.length : null }
   })
