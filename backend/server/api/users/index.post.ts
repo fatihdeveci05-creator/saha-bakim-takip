@@ -16,9 +16,26 @@ const bodySchema = z.object({
   takimId: z.number().int().optional(),
 })
 
+// "Yüklenici" (kod içinde: sorumlu) sadece bu rollerle saha personeli oluşturabilir.
+const yukleniciAcabilecegiRoller = ['ariza_ekibi', 'bakim_ekibi', 'kontrol_ekibi'] as const
+
 export default defineEventHandler(async (event) => {
-  await requireRole(event, ['yonetici'])
+  const actor = await requireRole(event, ['yonetici', 'sorumlu'])
   const body = await readValidatedBody(event, bodySchema.parse)
+
+  // Yönetici (İşveren) herkesi oluşturabilir. Sorumlu (Yüklenici) sadece saha
+  // personeli (arıza/bakım/kontrol ekibi) oluşturabilir — kendi dengi
+  // (sorumlu/Yüklenici) veya işveren hesabı açamaz.
+  if (
+    actor.rol === 'sorumlu' &&
+    (body.taraf !== 'alt_yuklenici' ||
+      !yukleniciAcabilecegiRoller.includes(body.rol as (typeof yukleniciAcabilecegiRoller)[number]))
+  ) {
+    throw createError({
+      statusCode: 403,
+      statusMessage: 'Sadece saha personeli (arıza/bakım/kontrol ekibi) hesabı oluşturabilirsiniz',
+    })
+  }
 
   const [existing] = await useDb()
     .select({ id: users.id })

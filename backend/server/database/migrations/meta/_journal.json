@@ -22,6 +22,13 @@
       "when": 1787915139054,
       "tag": "0002_white_forgotten_one",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1787996744147,
+      "tag": "0003_tough_bloodaxe",
+      "breakpoints": true
     }
   ]
 }

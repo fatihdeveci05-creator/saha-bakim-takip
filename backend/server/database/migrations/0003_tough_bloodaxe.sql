@@ -1,0 +1,1 @@
+ALTER TABLE `equipment` ADD `aktif` boolean DEFAULT true NOT NULL;

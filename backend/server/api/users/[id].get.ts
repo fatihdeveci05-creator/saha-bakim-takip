@@ -5,7 +5,7 @@ import { users } from '../../database/schema'
 import { safeUserColumns } from '../../utils/selectors'
 
 export default defineEventHandler(async (event) => {
-  await requireRole(event, ['yonetici', 'denetci'])
+  await requireRole(event, ['yonetici', 'sorumlu'])
   const id = Number(getRouterParam(event, 'id'))
 
   const [user] = await useDb()

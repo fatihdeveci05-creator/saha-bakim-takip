@@ -77,6 +77,8 @@ export const equipment = mysqlTable('equipment', {
   model: varchar('model', { length: 255 }),
   seriNo: varchar('seri_no', { length: 100 }),
   kurulumTarihi: timestamp('kurulum_tarihi'),
+  // Kontrol Ekibi'nin konum-tabanlı denetim akışına sadece aktif ekipman dahil olur.
+  aktif: boolean('aktif').notNull().default(true),
   createdAt: timestamp('created_at').notNull().defaultNow(),
 })
 

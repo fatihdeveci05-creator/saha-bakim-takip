@@ -1,8 +1,8 @@
-import { and, eq, gte, lte } from 'drizzle-orm'
+import { and, eq, gte, lte, inArray, notInArray } from 'drizzle-orm'
 import { requireAuth } from '../../utils/auth'
 import { useDb } from '../../database/client'
 import { workOrders, isEmriDurumEnum } from '../../database/schema'
-import { canViewAllWorkOrders } from '../../utils/workOrderAccess'
+import { canViewAllWorkOrders, visibleTipsFor } from '../../utils/workOrderAccess'
 
 export default defineEventHandler(async (event) => {
   const payload = await requireAuth(event)
@@ -13,7 +13,14 @@ export default defineEventHandler(async (event) => {
 
   const conditions = []
   if (!canViewAllWorkOrders(payload)) {
-    conditions.push(eq(workOrders.atananUserId, Number(payload.sub)))
+    const tips = visibleTipsFor(payload)
+    if (tips) {
+      conditions.push(inArray(workOrders.tip, tips as (typeof workOrders.$inferSelect)['tip'][]))
+    }
+    // Kontrol Ekibi'nin geçmişe (kapanmış kayıtlara) erişimi yok — sadece açık kayıtlar.
+    if (payload.rol === 'kontrol_ekibi') {
+      conditions.push(notInArray(workOrders.durum, ['onaylandi', 'reddedildi']))
+    }
   }
   if (durum && isEmriDurumEnum.includes(durum)) {
     conditions.push(eq(workOrders.durum, durum))

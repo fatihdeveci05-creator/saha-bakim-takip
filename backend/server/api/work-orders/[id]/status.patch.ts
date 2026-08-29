@@ -19,7 +19,9 @@ export default defineEventHandler(async (event) => {
   if (!workOrder) {
     throw createError({ statusCode: 404, statusMessage: 'İş emri bulunamadı' })
   }
-  if (workOrder.atananUserId !== Number(payload.sub)) {
+  // Atanan personel kendi işini tamamlar; Yüklenici (sorumlu) herhangi bir
+  // saha personelinin işini de tamamlayabilir (yetki matrisi, PLAN.md böl. 2).
+  if (workOrder.atananUserId !== Number(payload.sub) && payload.rol !== 'sorumlu') {
     throw createError({ statusCode: 403, statusMessage: 'Bu iş emri size atanmamış' })
   }
   if (!['bekliyor', 'devam_edecek'].includes(workOrder.durum)) {

@@ -15,7 +15,7 @@ function hoursBetween(start: Date | null, end: Date | null) {
 }
 
 export default defineEventHandler(async (event) => {
-  await requireRole(event, ['yonetici', 'denetci'])
+  await requireRole(event, ['yonetici', 'sorumlu'])
   const db = useDb()
 
   const query = getQuery(event)
