@@ -29,6 +29,18 @@ export function kontrolEkibiGecmisiGorebilirMi() {
   return false
 }
 
+// Atanmamış (atanan_user_id = null) bir iş emrinde, tipine uygun rol işlem
+// yapabilir (görüntüleme, durum değiştirme, foto/malzeme ekleme) — ama kimseye
+// "kilitlenmez"/otomatik atanmaz, atanan_user_id null kalır (bilinçli atama
+// sadece /assign endpoint'i veya Yüklenici/İşveren ile yapılır). Kim çözdüğü
+// resolvedByUserId ile ayrıca kayıt altına alınır. Kontrol Ekibi bu kapsamda
+// değil (sadece bildirir, tamamlamaz).
+export function canClaimUnassignedWorkOrder(payload: AuthTokenPayload, tip: string) {
+  if (tip === 'ariza') return payload.rol === 'ariza_ekibi'
+  if (tip === 'bakim') return payload.rol === 'bakim_ekibi'
+  return false
+}
+
 export function assertCanViewWorkOrder(payload: AuthTokenPayload, workOrder: WorkOrderLike) {
   if (canViewAllWorkOrders(payload)) return
   const kendiIsiMi = workOrder.atananUserId === Number(payload.sub)
