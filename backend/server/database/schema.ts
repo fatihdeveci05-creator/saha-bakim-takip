@@ -97,6 +97,10 @@ export const workOrders = mysqlTable('work_orders', {
   responseStartedAt: timestamp('response_started_at'),
   resolvedAt: timestamp('resolved_at'),
   resolvedByUserId: int('resolved_by_user_id'),
+  // Kontrol Ekibi'nin konum-tabanlı "Sorun Yok" onayı için — sadece tip='kontrol'da dolu.
+  // Fotoğraf şartı yok, kanıt bu GPS koordinatı + zaman damgası.
+  checkGpsLat: decimal('check_gps_lat', { precision: 10, scale: 7 }),
+  checkGpsLng: decimal('check_gps_lng', { precision: 10, scale: 7 }),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow().onUpdateNow(),
 })

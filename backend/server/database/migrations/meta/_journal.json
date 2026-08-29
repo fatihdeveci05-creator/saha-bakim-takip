@@ -29,6 +29,13 @@
       "when": 1787996744147,
       "tag": "0003_tough_bloodaxe",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1787998036057,
+      "tag": "0004_naive_mesmero",
+      "breakpoints": true
     }
   ]
 }
