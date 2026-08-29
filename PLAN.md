@@ -36,7 +36,7 @@ Takip edilecek temel şeyler:
 | Tüm sahayı görme | ✅ | ✅ | kendi işleri | kendi işleri | denetim rotası |
 | Açık arıza kayıtlarını görme | ✅ | ✅ | ✅ | ❌ | ✅ |
 | Açık bakım kayıtlarını görme | ✅ | ✅ | ❌ | ✅ | ❌ |
-| Arıza/bakım işini **tamamlama** | ❌ (sadece denetler) | ✅ (herhangi birini) | ✅ (kendi arızaları) | ✅ (kendi bakımları) | ❌ (sadece bildirir) |
+| Arıza/bakım işini **tamamlama** | ✅ (herhangi birini, 29.08 eklendi) | ✅ (herhangi birini) | ✅ (kendi arızaları) | ✅ (kendi bakımları) | ❌ (sadece bildirir) |
 | Geçmişe erişim (görüntüleme) | ✅ tam | ✅ tam | ✅ sadece arıza geçmişi | ✅ sadece bakım geçmişi + **ünite künyesi** (bkz. aşağı) | ❌ yok |
 | Geçmişi düzenleme | ✅ | ❌ | ❌ | ❌ | ❌ |
 | "Onay Bekliyor" kuyruğunu görme | ✅ | ❌ | ❌ | ❌ | ❌ |
@@ -191,8 +191,12 @@ Flutter uygulama: iş listesi, müdahale başlat/bitir, durum seçimi (Devam Ede
 - Günlük görev ataması: ayrı bir alan yerine `users.rol`+`users.takimId` mutable yaklaşımıyla çözüldü (daha basit)
 - **Kontrol Ekibi konum-tabanlı denetim akışı**: 100m yarıçap algılama, otomatik ekipman geçişi, "Sorun Yok" hızlı onay, `equipment.aktif` alanı — tamamlandı, VPS'te canlı
 - Ünite künyesi (`GET /api/equipment/:id/history`): tüm roller geçmişi görebiliyor — tamamlandı
-- **Saha Durumu** (renkli grid+harita, İşveren+Yüklenici görür): web `/saha-durumu` + `/saha-haritasi`, mobil `SahaDurumuBody` (İşveren'de sekme, Yüklenici'de `sorumlu` için AppBar girişi) — tamamlandı, VPS'te canlı (29.08)
-- 🔜 Kalan: offline kuyruk, arka planda gerçek foreground-service konum takibi, mobil tarafın emülatörde görsel doğrulaması
+- **Saha Durumu** (renkli grid+harita, İşveren+Yüklenici görür): web `/saha-durumu` + `/saha-haritasi`, mobil `SahaDurumuBody` (İşveren'de sekme, Yüklenici'de `sorumlu` için AppBar girişi) — tamamlandı, VPS'te canlı (29.08). Grid'de saha adının yanında "Son kontrol: X saat/dakika önce" gösteriliyor, en son kontrol edilen/arızası bildirilen saha en üstte.
+- **"Devam Edecek" elden-ele akışı** (29.08): müdahale başlamış ama tamamlanamamış bir iş, atama silinerek tekrar açık havuza döner ki başka bir ekip üyesi devam edebilsin — çözüldü sayılmaz.
+- **İşveren mobil parite** (29.08): İşveren artık mobilde de Yüklenici gibi herhangi bir iş emrini tamamlayabiliyor, "Tüm İşler" sekmesiyle sadece denetim kuyruğu değil tüm aktif arıza/bakımı görebiliyor, yeni kullanıcı oluşturabiliyor (mobilde ilk kez).
+- **Fotoğraf seri çekim** (29.08): fotoğraf çekimi artık ağ isteği beklemiyor (cihazda tutulur), yükleme durum değiştirirken/bildirim gönderilirken toplu yapılıyor — Kontrol/Arıza/Bakım/Yüklenici/İşveren tüm foto akışlarında.
+- **Gerçek cihaz erişimi** (29.08): VPS5 nginx üzerinden zaten herkese açıkmış (`http://45.155.19.196`, HTTP — domain/SSL yok), mobil `ApiConfig.baseUrl` buna güncellendi, release APK gerçek Android telefonda test edildi ve çalışıyor.
+- 🔜 Kalan: offline kuyruk, arka planda gerçek foreground-service konum takibi, domain+SSL (şu an sade HTTP+IP), iOS build (Mac gerekiyor, proje zaten hazır — `mobile/ios/`)
 
 **Faz 4 — Gelişmiş** (Faz 5'ten sonra)
 Tam offline senkronizasyon, red oranı/tekrarlayan arıza trend analizleri
