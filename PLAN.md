@@ -196,14 +196,16 @@ Flutter uygulama: iş listesi, müdahale başlat/bitir, durum seçimi (Devam Ede
 - **İşveren mobil parite** (29.08): İşveren artık mobilde de Yüklenici gibi herhangi bir iş emrini tamamlayabiliyor, "Tüm İşler" sekmesiyle sadece denetim kuyruğu değil tüm aktif arıza/bakımı görebiliyor, yeni kullanıcı oluşturabiliyor (mobilde ilk kez).
 - **Fotoğraf seri çekim** (29.08): fotoğraf çekimi artık ağ isteği beklemiyor (cihazda tutulur), yükleme durum değiştirirken/bildirim gönderilirken toplu yapılıyor — Kontrol/Arıza/Bakım/Yüklenici/İşveren tüm foto akışlarında.
 - **Gerçek cihaz erişimi** (29.08): VPS5 nginx üzerinden zaten herkese açıkmış (`http://45.155.19.196`, HTTP — domain/SSL yok), mobil `ApiConfig.baseUrl` buna güncellendi, release APK gerçek Android telefonda test edildi ve çalışıyor.
-- 🔜 Kalan: offline kuyruk, arka planda gerçek foreground-service konum takibi, domain+SSL (şu an sade HTTP+IP), iOS build (Mac gerekiyor, proje zaten hazır — `mobile/ios/`)
+- **Arka planda gerçek konum takibi** (29.08 gece): Android'de `flutter_foreground_task` ile kalıcı bildirimli gerçek foreground service (istenen aralıkta güvenilir), iOS'ta geolocator'ın "Her Zaman" izni + arka plan konum modu ile sürekli stream (flutter_foreground_task iOS'ta güvenilir değil, kendi belgesine göre). Emülatörde uçtan uca doğrulandı: uygulama arka plandayken VPS5 DB'de konum gerçekten ilerledi.
+- Domain+SSL: kullanıcı kararı — **gerekmiyor**, sade `http://45.155.19.196` ile devam.
+- 🔜 Kalan: offline kuyruk, iOS build (Mac gerekiyor, proje zaten hazır — `mobile/ios/`), analiz/trend raporları (red oranı, tekrarlayan arıza — Faz 4'ün konusu, sıradaki odak)
 
 **Faz 4 — Gelişmiş** (Faz 5'ten sonra)
 Tam offline senkronizasyon, red oranı/tekrarlayan arıza trend analizleri
 
 ## 7. Açık Kararlar
 
-- [ ] Konum takibi ne zaman aktif olsun: uygulama açıkken sürekli mi, yoksa sadece aktif bir iş emri "Devam Edecek" durumundayken mi (Kontrol Ekibi için zaten sürekli/sık gerekiyor, diğer roller için hâlâ açık)
+- [x] Konum takibi ne zaman aktif olsun: **giriş yapılı alt yüklenici personeli için sürekli** (uygulama açık/kapalı fark etmez, arka planda da — 29.08 eklendi), iş emri durumundan bağımsız
 - [ ] KVKK: personel konum takibi kişisel veri sayılır — aydınlatma metni/personel onayı süreci gerekebilir, hukuki/operasyonel bir konu, teknik değil ama unutulmamalı
 - [ ] Kontrol Ekibi "Sorun Yok" kaydı İşveren onayına düşsün mü (şu an varsayılan: hayır, direkt kapanır — bkz. Bölüm 2)
 
