@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { requireAuth } from '../../../utils/auth'
 import { useDb } from '../../../database/client'
 import { workOrders, workOrderPhotos } from '../../../database/schema'
-import { canClaimUnassignedWorkOrder } from '../../../utils/workOrderAccess'
+import { canClaimUnassignedWorkOrder, canViewAllWorkOrders } from '../../../utils/workOrderAccess'
 
 const bodySchema = z.object({
   url: z.string().min(1),
@@ -24,9 +24,9 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 404, statusMessage: 'İş emri bulunamadı' })
   }
   const isAssignee = workOrder.atananUserId === Number(payload.sub)
-  const isSorumlu = payload.rol === 'sorumlu'
+  const hasFullAccess = canViewAllWorkOrders(payload)
   const isOpenForRole = workOrder.atananUserId === null && canClaimUnassignedWorkOrder(payload, workOrder.tip)
-  if (!isAssignee && !isSorumlu && !isOpenForRole) {
+  if (!isAssignee && !hasFullAccess && !isOpenForRole) {
     throw createError({ statusCode: 403, statusMessage: 'Bu iş emri size atanmamış' })
   }
   if (!['bekliyor', 'devam_edecek'].includes(workOrder.durum)) {

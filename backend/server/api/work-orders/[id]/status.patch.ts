@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { requireAuth } from '../../../utils/auth'
 import { useDb } from '../../../database/client'
 import { workOrders, workOrderPhotos, workOrderTimeline } from '../../../database/schema'
-import { canClaimUnassignedWorkOrder } from '../../../utils/workOrderAccess'
+import { canClaimUnassignedWorkOrder, canViewAllWorkOrders } from '../../../utils/workOrderAccess'
 
 const bodySchema = z.object({
   durum: z.enum(['devam_edecek', 'tamamlandi', 'na', 'bekliyor']),
@@ -20,17 +20,18 @@ export default defineEventHandler(async (event) => {
   if (!workOrder) {
     throw createError({ statusCode: 404, statusMessage: 'İş emri bulunamadı' })
   }
-  // Atanan personel kendi işini tamamlar; Yüklenici (sorumlu) herhangi bir
-  // saha personelinin işini de tamamlayabilir (yetki matrisi, PLAN.md böl. 2).
-  // Atanmamış (atanan_user_id = null) bir iş, tipine uygun rol tarafından
-  // (örn. herhangi bir Arıza Ekibi üyesi) işlem görebilir — ama kimseye
-  // "kilitlenmez", atanan_user_id null kalır (bilinçli atama sadece
-  // /assign endpoint'i veya Yüklenici/İşveren ile yapılır). Kim çözdüğü
-  // yine de resolvedByUserId ile ayrıca kayıt altına alınır.
+  // Atanan personel kendi işini tamamlar; Yüklenici (sorumlu) ve İşveren
+  // (yönetici) herhangi bir saha personelinin işini de tamamlayabilir (yetki
+  // matrisi, PLAN.md böl. 2 — İşveren de sahadaki tüm ekiplerin
+  // yapabildiklerini yapabilmeli). Atanmamış (atanan_user_id = null) bir iş,
+  // tipine uygun rol tarafından (örn. herhangi bir Arıza Ekibi üyesi) işlem
+  // görebilir — ama kimseye "kilitlenmez", atanan_user_id null kalır
+  // (bilinçli atama sadece /assign endpoint'i veya Yüklenici/İşveren ile
+  // yapılır). Kim çözdüğü yine de resolvedByUserId ile ayrıca kayıt altına alınır.
   const isAssignee = workOrder.atananUserId === Number(payload.sub)
-  const isSorumlu = payload.rol === 'sorumlu'
+  const hasFullAccess = canViewAllWorkOrders(payload)
   const isOpenForRole = workOrder.atananUserId === null && canClaimUnassignedWorkOrder(payload, workOrder.tip)
-  if (!isAssignee && !isSorumlu && !isOpenForRole) {
+  if (!isAssignee && !hasFullAccess && !isOpenForRole) {
     throw createError({ statusCode: 403, statusMessage: 'Bu iş emri size atanmamış' })
   }
   if (!['bekliyor', 'devam_edecek'].includes(workOrder.durum)) {

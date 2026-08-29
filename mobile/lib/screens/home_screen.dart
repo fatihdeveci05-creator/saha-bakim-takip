@@ -11,6 +11,7 @@ import '../utils/date_range.dart';
 import '../widgets/status_badge.dart';
 import '../widgets/tip_badge.dart';
 import 'assign_work_order_screen.dart';
+import 'create_user_screen.dart';
 import 'notifications_screen.dart';
 import 'report_ariza_screen.dart';
 import 'saha_durumu_screen.dart';
@@ -212,7 +213,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         ),
         actions: [
           IconButton(icon: const Icon(Icons.event_outlined), tooltip: 'Tarih filtresi', onPressed: _pickPeriod),
-          if (auth.currentUser?.rol == 'sorumlu')
+          if (auth.currentUser?.rol == 'sorumlu') ...[
             IconButton(
               icon: const Icon(Icons.grid_view_outlined),
               tooltip: 'Saha Durumu',
@@ -220,6 +221,12 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                 MaterialPageRoute(builder: (_) => Scaffold(appBar: AppBar(title: const Text('Saha Durumu')), body: const SahaDurumuBody())),
               ),
             ),
+            IconButton(
+              icon: const Icon(Icons.person_add_alt_outlined),
+              tooltip: 'Yeni Kullanıcı',
+              onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const CreateUserScreen())),
+            ),
+          ],
           const NotificationBellButton(),
           IconButton(icon: const Icon(Icons.logout), tooltip: 'Çıkış yap', onPressed: () => auth.logout()),
         ],
