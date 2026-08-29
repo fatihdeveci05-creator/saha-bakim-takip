@@ -3,7 +3,12 @@ import type { Equipment, Site } from '~/types'
 
 const { apiFetch } = useApi()
 const auth = useAuth()
-const { data: items, pending, error, refresh } = await useAsyncData('equipment', () => apiFetch<Equipment[]>('/api/equipment'))
+const showInactive = ref(false)
+const { data: items, pending, error, refresh } = await useAsyncData(
+  'equipment',
+  () => apiFetch<Equipment[]>(`/api/equipment${showInactive.value ? '?includeInactive=1' : ''}`),
+  { watch: [showInactive] },
+)
 const { data: sites } = await useAsyncData('sites-for-equipment', () => apiFetch<Site[]>('/api/sites'))
 const siteNameById = computed(() => new Map((sites.value ?? []).map((s) => [s.id, s.ad])))
 
@@ -63,7 +68,12 @@ const tipLabels: Record<string, string> = { asansor: 'Asansör', yuruyen_merdive
   <div>
     <div class="page-header">
       <h1>Ekipmanlar</h1>
-      <button class="btn btn-primary" @click="showForm = !showForm">{{ showForm ? 'Vazgeç' : '+ Yeni Ekipman' }}</button>
+      <div style="display: flex; align-items: center; gap: 12px">
+        <label style="display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: normal">
+          <input v-model="showInactive" type="checkbox" /> Pasifleri göster
+        </label>
+        <button class="btn btn-primary" @click="showForm = !showForm">{{ showForm ? 'Vazgeç' : '+ Yeni Ekipman' }}</button>
+      </div>
     </div>
 
     <form v-if="showForm" class="card" style="margin-bottom: 16px" @submit.prevent="submit">

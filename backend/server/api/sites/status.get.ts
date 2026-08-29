@@ -19,7 +19,9 @@ export default defineEventHandler(async (event) => {
 
   const [allSites, allEquipment, openWorkOrders, allReportedAt] = await Promise.all([
     db.select().from(sites),
-    db.select().from(equipment),
+    // Pasif ekipman (bkz. "pasife alma" silme yerine önerilen akış) Saha
+    // Durumu'nda görünmez.
+    db.select().from(equipment).where(eq(equipment.aktif, true)),
     db
       .select({ equipmentId: workOrders.equipmentId, tip: workOrders.tip })
       .from(workOrders)
