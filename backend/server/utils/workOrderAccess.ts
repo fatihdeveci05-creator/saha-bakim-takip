@@ -33,11 +33,20 @@ export function kontrolEkibiGecmisiGorebilirMi() {
 // yapabilir (görüntüleme, durum değiştirme, foto/malzeme ekleme) — ama kimseye
 // "kilitlenmez"/otomatik atanmaz, atanan_user_id null kalır (bilinçli atama
 // sadece /assign endpoint'i veya Yüklenici/İşveren ile yapılır). Kim çözdüğü
-// resolvedByUserId ile ayrıca kayıt altına alınır. Kontrol Ekibi bu kapsamda
-// değil (sadece bildirir, tamamlamaz).
+// resolvedByUserId ile ayrıca kayıt altına alınır.
+//
+// "kontrol" tipi de dahil: Kontrol Ekibi'nin KENDİ GPS-tetiklemeli akışı
+// (bkz. /api/kontrol/*) sadece bildirir/anlık kapatır ve buraya girmez, ama
+// Yönetici/Sorumlu bir kontrol_ekibi üyesine DOĞRUDAN "kontrol" tipi bir iş
+// emri atayabiliyor (bkz. work-orders POST, CAN_ASSIGN_TO_OTHERS) ve bu iş
+// normal Müdahale Başlat/Devam Edecek/Tamamlandı akışından geçiyor. "Devam
+// Edecek" (elden-ele) sonrası atanan_user_id null'a düşünce, bu satır
+// olmadan HİÇBİR kontrol_ekibi üyesi (ilk kişi dahil) o işe bir daha
+// erişemiyordu — "Bu iş emri size atanmamış" hatası.
 export function canClaimUnassignedWorkOrder(payload: AuthTokenPayload, tip: string) {
   if (tip === 'ariza') return payload.rol === 'ariza_ekibi'
   if (tip === 'bakim') return payload.rol === 'bakim_ekibi'
+  if (tip === 'kontrol') return payload.rol === 'kontrol_ekibi'
   return false
 }
 

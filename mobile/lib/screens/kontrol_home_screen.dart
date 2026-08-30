@@ -7,10 +7,14 @@ import 'package:provider/provider.dart';
 
 import '../core/api_client.dart';
 import '../core/auth_service.dart';
+import '../models/work_order.dart';
 import '../services/location_service.dart';
 import '../widgets/confirm_logout.dart';
+import '../widgets/status_badge.dart';
+import '../widgets/tip_badge.dart';
 import 'notifications_screen.dart';
 import 'report_ariza_screen.dart';
+import 'work_order_detail_screen.dart';
 
 /// Kontrol Ekibi'nin ana ekranı — konum-tabanlı denetim akışı (PLAN.md böl. 2).
 /// Checklist/foto yok: GPS 100m yarıçapa girince aktif ekipman gösterilir,
@@ -26,6 +30,7 @@ class _KontrolHomeScreenState extends State<KontrolHomeScreen> {
   StreamSubscription<Position>? _sub;
   Position? _lastPosition;
   Map<String, dynamic>? _nearby;
+  List<WorkOrder> _assignedTasks = [];
   bool _loading = true;
   bool _submitting = false;
   String? _error;
@@ -34,7 +39,32 @@ class _KontrolHomeScreenState extends State<KontrolHomeScreen> {
   void initState() {
     super.initState();
     _sub = context.read<LocationService>().positionStream.listen(_onPosition);
+    unawaited(_loadAssignedTasks());
     unawaited(_refreshOnce());
+  }
+
+  // Yönetici/Sorumlu tarafından doğrudan atanmış "kontrol" (veya başka tip)
+  // işleri — Kontrol Ekibi'nin GPS-tetiklemeli "Sorun Yok" akışından ayrı,
+  // normal Müdahale Başlat/Devam Edecek/Tamamlandı akışıyla yürütülür.
+  Future<void> _loadAssignedTasks() async {
+    try {
+      final dio = context.read<ApiClient>().dio;
+      final myId = context.read<AuthService>().currentUser?.id;
+      final res = await dio.get('/api/work-orders');
+      final all = (res.data as List<dynamic>).map((e) => WorkOrder.fromJson(e as Map<String, dynamic>)).toList();
+      final mine = all
+          .where((w) => w.atananUserId == myId && (w.durum == 'bekliyor' || w.durum == 'devam_edecek'))
+          .toList();
+      if (!mounted) return;
+      setState(() => _assignedTasks = mine);
+    } catch (_) {
+      // Sessizce yut — bu ikincil bir bilgi kartı, GPS-yakınlık akışını etkilememeli.
+    }
+  }
+
+  Future<void> _openAssignedTask(WorkOrder task) async {
+    await Navigator.of(context).push(MaterialPageRoute(builder: (_) => WorkOrderDetailScreen(workOrderId: task.id)));
+    if (mounted) await _loadAssignedTasks();
   }
 
   @override
@@ -134,6 +164,10 @@ class _KontrolHomeScreenState extends State<KontrolHomeScreen> {
     );
   }
 
+  Future<void> _refreshAll() async {
+    await Future.wait([_refreshOnce(), _loadAssignedTasks()]);
+  }
+
   Widget _buildBody() {
     if (_loading) return const Center(child: CircularProgressIndicator());
     if (_error != null) {
@@ -143,47 +177,77 @@ class _KontrolHomeScreenState extends State<KontrolHomeScreen> {
           children: [
             Text(_error!, textAlign: TextAlign.center),
             const SizedBox(height: 12),
-            OutlinedButton(onPressed: _refreshOnce, child: const Text('Tekrar dene')),
+            OutlinedButton(onPressed: _refreshAll, child: const Text('Tekrar dene')),
           ],
         ),
       );
     }
 
     final nearby = _nearby;
-    if (nearby == null || nearby['site'] == null) {
-      return const Center(child: Text('Aktif ekipman bulunamadı', style: TextStyle(color: Colors.grey)));
+    final site = nearby?['site'] as Map<String, dynamic>?;
+    final distance = nearby?['distanceMeters'] as int?;
+    final icinde = nearby?['icinde'] as bool? ?? false;
+    final equipmentList = site != null ? (nearby?['equipment'] as List<dynamic>).cast<Map<String, dynamic>>() : const <Map<String, dynamic>>[];
+
+    if (site == null && _assignedTasks.isEmpty) {
+      return RefreshIndicator(
+        onRefresh: _refreshAll,
+        child: ListView(
+          children: const [
+            SizedBox(height: 120),
+            Center(child: Text('Aktif ekipman bulunamadı', style: TextStyle(color: Colors.grey))),
+          ],
+        ),
+      );
     }
 
-    final site = nearby['site'] as Map<String, dynamic>;
-    final distance = nearby['distanceMeters'] as int?;
-    final icinde = nearby['icinde'] as bool? ?? false;
-    final equipmentList = (nearby['equipment'] as List<dynamic>).cast<Map<String, dynamic>>();
-
     return RefreshIndicator(
-      onRefresh: _refreshOnce,
+      onRefresh: _refreshAll,
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          Card(
-            color: icinde ? Colors.green.withValues(alpha: 0.08) : Colors.orange.withValues(alpha: 0.08),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(site['ad'] as String, style: Theme.of(context).textTheme.titleMedium),
-                  const SizedBox(height: 4),
-                  Text(
-                    icinde
-                        ? 'Bu sahadasınız (${distance ?? 0}m)'
-                        : 'En yakın aktif saha — ${distance ?? '?'}m uzakta, yaklaşınca aktifleşir',
-                    style: TextStyle(color: icinde ? Colors.green[800] : Colors.orange[900]),
+          if (_assignedTasks.isNotEmpty) ...[
+            Text('Size Atanan Görevler', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 8),
+            for (final task in _assignedTasks) ...[
+              Card(
+                child: ListTile(
+                  leading: const Icon(Icons.assignment_outlined),
+                  title: Text('İş Emri #${task.id}'),
+                  subtitle: Wrap(
+                    spacing: 6,
+                    children: [TipBadge(tip: task.tip), StatusBadge(durum: task.durum)],
                   ),
-                ],
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => _openAssignedTask(task),
+                ),
+              ),
+              const SizedBox(height: 8),
+            ],
+            const SizedBox(height: 8),
+          ],
+          if (site != null) ...[
+            Card(
+              color: icinde ? Colors.green.withValues(alpha: 0.08) : Colors.orange.withValues(alpha: 0.08),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(site['ad'] as String, style: Theme.of(context).textTheme.titleMedium),
+                    const SizedBox(height: 4),
+                    Text(
+                      icinde
+                          ? 'Bu sahadasınız (${distance ?? 0}m)'
+                          : 'En yakın aktif saha — ${distance ?? '?'}m uzakta, yaklaşınca aktifleşir',
+                      style: TextStyle(color: icinde ? Colors.green[800] : Colors.orange[900]),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: 16),
+            const SizedBox(height: 16),
+          ],
           for (final eq in equipmentList) ...[
             Card(
               child: ListTile(
