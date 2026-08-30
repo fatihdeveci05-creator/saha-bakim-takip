@@ -198,7 +198,7 @@ Flutter uygulama: iş listesi, müdahale başlat/bitir, durum seçimi (Devam Ede
 - **Gerçek cihaz erişimi** (29.08): VPS5 nginx üzerinden zaten herkese açıkmış (`http://45.155.19.196`, HTTP — domain/SSL yok), mobil `ApiConfig.baseUrl` buna güncellendi, release APK gerçek Android telefonda test edildi ve çalışıyor.
 - **Arka planda gerçek konum takibi** (29.08 gece): Android'de `flutter_foreground_task` ile kalıcı bildirimli gerçek foreground service (istenen aralıkta güvenilir), iOS'ta geolocator'ın "Her Zaman" izni + arka plan konum modu ile sürekli stream (flutter_foreground_task iOS'ta güvenilir değil, kendi belgesine göre). Emülatörde uçtan uca doğrulandı: uygulama arka plandayken VPS5 DB'de konum gerçekten ilerledi.
 - Domain+SSL: kullanıcı kararı — **gerekmiyor**, sade `http://45.155.19.196` ile devam.
-- 🔜 Kalan: offline kuyruk, iOS build (Mac gerekiyor, proje zaten hazır — `mobile/ios/`), analiz/trend raporları (red oranı, tekrarlayan arıza — Faz 4'ün konusu, sıradaki odak)
+- 🔜 Kalan: offline kuyruk, iOS build (Mac gerekiyor, proje zaten hazır — `mobile/ios/`)
 
 **Faz 4 — Gelişmiş** (Faz 5'ten sonra) — analiz kısmı başladı (30.08)
 - ✅ Red oranı trendi (aylık, son 6 ay), müdahale/çözüm süresi trendi, tekrarlayan arıza tespiti (son 90 günde 2+ arıza) — Raporlar sayfasında, VPS'te canlı.
