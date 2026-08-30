@@ -135,17 +135,27 @@ class _WorkOrderDetailScreenState extends State<WorkOrderDetailScreen> {
       // Bekleyen (henüz yüklenmemiş) fotoğraflar varsa durum değişmeden önce
       // toplu yüklenir — "Tamamlandı" fotoğraf sayısını sunucuda doğruladığı
       // için bu, herhangi bir durum değişikliğinden önce yapılmalı.
+      //
+      // ÖNEMLİ: her fotoğraf sunucuya BAŞARIYLA yüklendikçe (onProgress her
+      // fotoğraf bitince bir kez tetiklenir, sırayla) _pendingPhotos'tan
+      // hemen çıkarılır. Aksi halde N fotoğraftan biri (ör. 3.) ağ
+      // hatasıyla başarısız olduğunda, önceden başarıyla yüklenmiş 1. ve
+      // 2. fotoğraf hâlâ listede kalır ve kullanıcı tekrar denediğinde
+      // sunucuda MÜKERRER kayıt olarak ikinci kez yüklenirdi.
       if (_pendingPhotos.isNotEmpty) {
-        final toUpload = List<PendingPhoto>.from(_pendingPhotos);
         await uploadPendingPhotos(
           _dio,
           widget.workOrderId,
-          toUpload,
+          List<PendingPhoto>.from(_pendingPhotos),
           onProgress: (done, total) {
-            if (mounted) setState(() => _uploadProgress = 'Fotoğraflar yükleniyor: $done/$total');
+            if (mounted) {
+              setState(() {
+                _uploadProgress = 'Fotoğraflar yükleniyor: $done/$total';
+                if (_pendingPhotos.isNotEmpty) _pendingPhotos.removeAt(0);
+              });
+            }
           },
         );
-        if (mounted) setState(() => _pendingPhotos.removeRange(0, toUpload.length));
       }
       await _dio.patch('/api/work-orders/${widget.workOrderId}/status', data: {'durum': durum, if (not != null) 'not': not});
       await _load();
