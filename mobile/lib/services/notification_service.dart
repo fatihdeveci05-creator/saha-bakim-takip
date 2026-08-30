@@ -26,6 +26,12 @@ class NotificationService extends ChangeNotifier {
     }
   }
 
+  Future<void> clearAll() async {
+    await _apiClient.dio.delete('/api/notifications');
+    items = [];
+    notifyListeners();
+  }
+
   Future<void> markRead(int id) async {
     try {
       await _apiClient.dio.post('/api/notifications/$id/read');

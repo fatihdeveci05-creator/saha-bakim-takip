@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 import '../core/api_client.dart';
 import '../core/auth_service.dart';
 import '../services/location_service.dart';
+import '../widgets/confirm_logout.dart';
 import 'notifications_screen.dart';
 import 'report_ariza_screen.dart';
 
@@ -126,7 +127,7 @@ class _KontrolHomeScreenState extends State<KontrolHomeScreen> {
         title: const Text('ABB Kontrol — Kontrol Ekibi'),
         actions: [
           const NotificationBellButton(),
-          IconButton(icon: const Icon(Icons.logout), tooltip: 'Çıkış yap', onPressed: () => auth.logout()),
+          IconButton(icon: const Icon(Icons.logout), tooltip: 'Çıkış yap', onPressed: () => confirmAndLogout(context, auth)),
         ],
       ),
       body: _buildBody(),

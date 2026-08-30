@@ -8,6 +8,8 @@ import '../models/equipment.dart';
 import '../models/site.dart';
 import '../models/work_order.dart';
 import '../utils/date_range.dart';
+import '../widgets/confirm_logout.dart';
+import '../widgets/floating_icon_menu.dart';
 import '../widgets/status_badge.dart';
 import '../widgets/tip_badge.dart';
 import 'assign_work_order_screen.dart';
@@ -212,37 +214,45 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           tabs: _Tab.values.map((tab) => Tab(text: _tabLabel(tab))).toList(),
         ),
         actions: [
-          IconButton(icon: const Icon(Icons.event_outlined), tooltip: 'Tarih filtresi', onPressed: _pickPeriod),
-          if (auth.currentUser?.rol == 'sorumlu') ...[
-            IconButton(
-              icon: const Icon(Icons.grid_view_outlined),
-              tooltip: 'Saha Durumu',
-              onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => Scaffold(appBar: AppBar(title: const Text('Saha Durumu')), body: const SahaDurumuBody())),
-              ),
-            ),
-            IconButton(
-              icon: const Icon(Icons.people_alt_outlined),
-              tooltip: 'Saha Personeli',
-              onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const PersonnelScreen())),
-            ),
-          ],
           const NotificationBellButton(),
-          IconButton(icon: const Icon(Icons.logout), tooltip: 'Çıkış yap', onPressed: () => auth.logout()),
+          IconButton(icon: const Icon(Icons.logout), tooltip: 'Çıkış yap', onPressed: () => confirmAndLogout(context, auth)),
         ],
       ),
-      body: RefreshIndicator(
-        onRefresh: _load,
-        child: _loading
-            ? const Center(child: CircularProgressIndicator())
-            : _error != null
-            ? Center(child: Text(_error!))
-            : TabBarView(
-                controller: _tabController,
-                children: _Tab.values
-                    .map((tab) => _WorkOrderList(items: _filter(tab), equipmentLabel: _equipmentLabel, onReturn: _load))
-                    .toList(),
-              ),
+      body: Stack(
+        children: [
+          RefreshIndicator(
+            onRefresh: _load,
+            child: _loading
+                ? const Center(child: CircularProgressIndicator())
+                : _error != null
+                ? Center(child: Text(_error!))
+                : TabBarView(
+                    controller: _tabController,
+                    children: _Tab.values
+                        .map((tab) => _WorkOrderList(items: _filter(tab), equipmentLabel: _equipmentLabel, onReturn: _load))
+                        .toList(),
+                  ),
+          ),
+          FloatingIconMenu(
+            items: [
+              FloatingIconMenuItem(icon: Icons.event_outlined, label: 'Tarih filtresi', onTap: _pickPeriod),
+              if (auth.currentUser?.rol == 'sorumlu') ...[
+                FloatingIconMenuItem(
+                  icon: Icons.grid_view_outlined,
+                  label: 'Saha Durumu',
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => Scaffold(appBar: AppBar(title: const Text('Saha Durumu')), body: const SahaDurumuBody())),
+                  ),
+                ),
+                FloatingIconMenuItem(
+                  icon: Icons.people_alt_outlined,
+                  label: 'Saha Personeli',
+                  onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const PersonnelScreen())),
+                ),
+              ],
+            ],
+          ),
+        ],
       ),
       floatingActionButton: Column(
         mainAxisSize: MainAxisSize.min,

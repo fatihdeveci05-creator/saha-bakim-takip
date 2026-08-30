@@ -21,7 +21,17 @@ class NotificationsScreen extends StatelessWidget {
     final fmt = DateFormat('dd.MM.yyyy HH:mm');
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Bildirimler')),
+      appBar: AppBar(
+        title: const Text('Bildirimler'),
+        actions: [
+          if (service.items.isNotEmpty)
+            IconButton(
+              icon: const Icon(Icons.delete_sweep_outlined),
+              tooltip: 'Bildirimleri temizle',
+              onPressed: () => _confirmClear(context, service),
+            ),
+        ],
+      ),
       body: RefreshIndicator(
         onRefresh: service.refresh,
         child: service.items.isEmpty
@@ -54,6 +64,28 @@ class NotificationsScreen extends StatelessWidget {
               ),
       ),
     );
+  }
+
+  Future<void> _confirmClear(BuildContext context, NotificationService service) async {
+    final onayli = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Bildirimleri temizle'),
+        content: const Text('Tüm bildirimler silinecek. Emin misiniz?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Vazgeç')),
+          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Temizle')),
+        ],
+      ),
+    );
+    if (onayli != true) return;
+    try {
+      await service.clearAll();
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Bildirimler temizlenemedi')));
+      }
+    }
   }
 }
 

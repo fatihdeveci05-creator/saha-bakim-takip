@@ -14,6 +14,8 @@ import '../models/site.dart';
 import '../models/user_location.dart';
 import '../models/work_order.dart';
 import '../utils/date_range.dart';
+import '../widgets/confirm_logout.dart';
+import '../widgets/floating_icon_menu.dart';
 import '../widgets/status_badge.dart';
 import '../widgets/tip_badge.dart';
 import 'assign_work_order_screen.dart';
@@ -62,19 +64,27 @@ class _EmployerHomeScreenState extends State<EmployerHomeScreen> with SingleTick
           ],
         ),
         actions: [
-          if (auth.currentUser?.rol == 'yonetici')
-            IconButton(
-              icon: const Icon(Icons.people_alt_outlined),
-              tooltip: 'Saha Personeli',
-              onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const PersonnelScreen())),
-            ),
           const NotificationBellButton(),
-          IconButton(icon: const Icon(Icons.logout), tooltip: 'Çıkış yap', onPressed: () => auth.logout()),
+          IconButton(icon: const Icon(Icons.logout), tooltip: 'Çıkış yap', onPressed: () => confirmAndLogout(context, auth)),
         ],
       ),
-      body: TabBarView(
-        controller: _tabController,
-        children: const [_DashboardTab(), _DenetimKuyruguTab(), _TumIslerTab(), _CanliHaritaTab(), SahaDurumuBody()],
+      body: Stack(
+        children: [
+          TabBarView(
+            controller: _tabController,
+            children: const [_DashboardTab(), _DenetimKuyruguTab(), _TumIslerTab(), _CanliHaritaTab(), SahaDurumuBody()],
+          ),
+          FloatingIconMenu(
+            items: [
+              if (auth.currentUser?.rol == 'yonetici')
+                FloatingIconMenuItem(
+                  icon: Icons.people_alt_outlined,
+                  label: 'Saha Personeli',
+                  onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const PersonnelScreen())),
+                ),
+            ],
+          ),
+        ],
       ),
       floatingActionButton: auth.currentUser?.rol == 'yonetici'
           ? FloatingActionButton.extended(
