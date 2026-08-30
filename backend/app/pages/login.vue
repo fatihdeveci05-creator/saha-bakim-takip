@@ -29,7 +29,7 @@ async function onSubmit() {
 <template>
   <div class="login-wrap">
     <form class="card login-card" @submit.prevent="onSubmit">
-      <h1>ABB Kontrol</h1>
+      <h1>SahaCheck</h1>
       <p class="muted">İşveren yönetim paneli</p>
 
       <div v-if="error" class="error-box">{{ error }}</div>

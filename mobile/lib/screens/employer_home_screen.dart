@@ -51,7 +51,7 @@ class _EmployerHomeScreenState extends State<EmployerHomeScreen> with SingleTick
     final auth = context.watch<AuthService>();
     return Scaffold(
       appBar: AppBar(
-        title: const Text('ABB Kontrol — İşveren'),
+        title: const Text('SahaCheck — İşveren'),
         bottom: TabBar(
           controller: _tabController,
           isScrollable: true,

@@ -65,7 +65,7 @@ class AbbKontrolApp extends StatelessWidget {
       ],
       child: MaterialApp(
         navigatorKey: navigatorKey,
-        title: 'ABB Kontrol',
+        title: 'SahaCheck',
         debugShowCheckedModeBanner: false,
         theme: ThemeData(colorSchemeSeed: const Color(0xFF2563EB), useMaterial3: true),
         home: const _RootGate(),

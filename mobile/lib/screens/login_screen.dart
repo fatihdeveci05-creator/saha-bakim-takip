@@ -52,7 +52,7 @@ class _LoginScreenState extends State<LoginScreen> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Text('ABB Kontrol', style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold)),
+                const Text('SahaCheck', style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 4),
                 const Text('Saha ekibi girişi', style: TextStyle(color: Colors.grey)),
                 const SizedBox(height: 24),

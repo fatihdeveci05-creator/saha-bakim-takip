@@ -1,11 +1,11 @@
 {
-    "name": "abb_kontrol",
-    "short_name": "abb_kontrol",
+    "name": "SahaCheck",
+    "short_name": "SahaCheck",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#ffffff",
+    "theme_color": "#0d2b52",
+    "description": "SahaCheck saha bakım takip uygulaması.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

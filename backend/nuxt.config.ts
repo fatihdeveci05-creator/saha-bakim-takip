@@ -3,6 +3,12 @@ export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
   devtools: { enabled: true },
   ssr: false,
+  app: {
+    head: {
+      title: 'SahaCheck',
+      link: [{ rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' }],
+    },
+  },
   css: ['~/assets/css/main.css', 'leaflet/dist/leaflet.css'],
   // /api/* CORS'u server/middleware/cors.ts hallediyor; statik /uploads/* dosyaları
   // Nuxt dev'de o middleware zincirinden geçmiyor, bu yüzden ayrı bir routeRule gerekiyor

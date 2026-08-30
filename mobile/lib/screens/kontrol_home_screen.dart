@@ -124,7 +124,7 @@ class _KontrolHomeScreenState extends State<KontrolHomeScreen> {
     final auth = context.watch<AuthService>();
     return Scaffold(
       appBar: AppBar(
-        title: const Text('ABB Kontrol — Kontrol Ekibi'),
+        title: const Text('SahaCheck — Kontrol Ekibi'),
         actions: [
           const NotificationBellButton(),
           IconButton(icon: const Icon(Icons.logout), tooltip: 'Çıkış yap', onPressed: () => confirmAndLogout(context, auth)),

@@ -116,7 +116,7 @@ class LocationService {
     } else {
       await FlutterForegroundTask.startService(
         serviceId: 256,
-        notificationTitle: 'ABB Kontrol',
+        notificationTitle: 'SahaCheck',
         notificationText: 'Konumunuz saha takibi için paylaşılıyor',
         callback: startLocationTaskCallback,
       );

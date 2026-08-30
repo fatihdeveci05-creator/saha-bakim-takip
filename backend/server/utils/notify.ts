@@ -12,7 +12,7 @@ async function pushToUsers(userIds: number[], mesaj: string, relatedWorkOrderId?
   if (!tokens.length) return
   await sendPush(
     tokens.map((t) => t.token),
-    'ABB Kontrol',
+    'SahaCheck',
     mesaj,
     relatedWorkOrderId ? { workOrderId: String(relatedWorkOrderId) } : undefined,
   )

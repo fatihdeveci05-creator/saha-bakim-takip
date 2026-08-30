@@ -20,7 +20,7 @@ const nav = [
 <template>
   <div class="shell">
     <aside class="sidebar">
-      <div class="brand">ABB Kontrol</div>
+      <div class="brand">SahaCheck</div>
       <nav>
         <NuxtLink
           v-for="item in nav"
