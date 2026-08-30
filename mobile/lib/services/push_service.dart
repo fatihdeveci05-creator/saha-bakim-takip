@@ -22,19 +22,28 @@ class PushService {
   final VoidCallback onForegroundMessage;
 
   Future<void> init() async {
-    final messaging = FirebaseMessaging.instance;
-    final settings = await messaging.requestPermission();
-    if (settings.authorizationStatus == AuthorizationStatus.denied) return;
+    // Firebase.initializeApp() başarısız olmuşsa (ör. GoogleService-Info.plist
+    // eksik/yanlış) FirebaseMessaging.instance burada fırlatır — push
+    // bildirimi çalışmasın, ama bu yüzden uygulamanın geri kalanı (özellikle
+    // sessiz bir Future içinde çağrıldığı için yakalanmamış bir hata olarak)
+    // etkilenmemeli.
+    try {
+      final messaging = FirebaseMessaging.instance;
+      final settings = await messaging.requestPermission();
+      if (settings.authorizationStatus == AuthorizationStatus.denied) return;
 
-    final token = await messaging.getToken();
-    if (token != null) await _registerToken(token);
-    messaging.onTokenRefresh.listen(_registerToken);
+      final token = await messaging.getToken();
+      if (token != null) await _registerToken(token);
+      messaging.onTokenRefresh.listen(_registerToken);
 
-    FirebaseMessaging.onMessage.listen((_) => onForegroundMessage());
-    FirebaseMessaging.onMessageOpenedApp.listen(_handleTap);
+      FirebaseMessaging.onMessage.listen((_) => onForegroundMessage());
+      FirebaseMessaging.onMessageOpenedApp.listen(_handleTap);
 
-    final initialMessage = await messaging.getInitialMessage();
-    if (initialMessage != null) _handleTap(initialMessage);
+      final initialMessage = await messaging.getInitialMessage();
+      if (initialMessage != null) _handleTap(initialMessage);
+    } catch (e) {
+      debugPrint('Push bildirimleri başlatılamadı: $e');
+    }
   }
 
   Future<void> _registerToken(String token) async {

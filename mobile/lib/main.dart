@@ -22,11 +22,25 @@ void main() async {
   // Web'de Firebase.initializeApp() ayrı bir FirebaseOptions (web config) ister ve
   // push kapsamımız Android/iOS ile sınırlı — bu yüzden web'de tamamen atlanır.
   if (!kIsWeb) {
-    await Firebase.initializeApp();
-    FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
-    // Android'de arka plan konum servisiyle (LocationService, foreground
-    // task izolesi) ana izole arasında iki yönlü haberleşme için gerekli.
-    FlutterForegroundTask.initCommunicationPort();
+    try {
+      // GoogleService-Info.plist/google-services.json eksik veya Xcode
+      // hedefine (target) doğru eklenmemişse burası fırlatır — push
+      // bildirimi çalışmasa bile UYGULAMANIN TAMAMI çökmemeli, bu yüzden
+      // try/catch ile sarıldı (önceden sarılı değildi, tek bir Firebase
+      // yapılandırma sorunu tüm uygulamayı açılışta çöktürüyordu).
+      await Firebase.initializeApp();
+      FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+    } catch (e) {
+      debugPrint('Firebase başlatılamadı, push bildirimleri devre dışı: $e');
+    }
+    // Sadece Android'de kullanılıyor (LocationService, foreground task
+    // izolesiyle iki yönlü haberleşme için) — iOS'ta flutter_foreground_task
+    // hiç kullanılmıyor (bkz. location_service.dart), bu çağrı iOS'ta
+    // gereksiz bir BGTaskScheduler kayıt denemesi + Info.plist uyarısına
+    // yol açıyordu.
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      FlutterForegroundTask.initCommunicationPort();
+    }
   }
   runApp(const AbbKontrolApp());
 }
