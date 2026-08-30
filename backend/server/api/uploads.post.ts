@@ -10,7 +10,15 @@ const ALLOWED_TYPES: Record<string, string> = {
 }
 
 // Yerel geliştirme/MVP için basit disk depolama. Üretimde PLAN.md'deki ayrı
-// Hetzner Volume'e (public/uploads yerine) taşınacak.
+// Hetzner Volume'e taşınacak.
+//
+// ÖNEMLİ: bu klasör bilinçli olarak `public/` DIŞINDA tutulur. Nitro'nun
+// build çıktısı (`.output/public/`) `public/` klasörünün BUILD ANINDAKİ bir
+// kopyasıdır — runtime'da `public/uploads` içine yazılan dosyalar bir sonraki
+// `npm run build`e kadar `.output/public/`e hiç yansımaz ve `/uploads/*`
+// isteği Nitro'nun statik dosya bulamayıp SPA fallback'ine (index.html)
+// düşmesine yol açar. Bu yüzden dosyalar `uploads/` (public/ dışında) diske
+// yazılır ve `server/routes/uploads/[...path].get.ts` ile ayrıca serve edilir.
 export default defineEventHandler(async (event) => {
   await requireAuth(event)
 
@@ -25,7 +33,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: 'Sadece jpeg/png/webp kabul edilir' })
   }
 
-  const uploadsDir = join(process.cwd(), 'public', 'uploads')
+  const uploadsDir = join(process.cwd(), 'uploads')
   await mkdir(uploadsDir, { recursive: true })
 
   const filename = `${randomUUID()}.${ext}`
