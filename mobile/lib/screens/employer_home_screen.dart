@@ -17,8 +17,8 @@ import '../utils/date_range.dart';
 import '../widgets/status_badge.dart';
 import '../widgets/tip_badge.dart';
 import 'assign_work_order_screen.dart';
-import 'create_user_screen.dart';
 import 'notifications_screen.dart';
+import 'personnel_screen.dart';
 import 'saha_durumu_screen.dart';
 import 'work_order_detail_screen.dart';
 
@@ -35,7 +35,7 @@ class _EmployerHomeScreenState extends State<EmployerHomeScreen> with SingleTick
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(length: 5, vsync: this);
   }
 
   @override
@@ -54,6 +54,7 @@ class _EmployerHomeScreenState extends State<EmployerHomeScreen> with SingleTick
           controller: _tabController,
           isScrollable: true,
           tabs: const [
+            Tab(text: 'Dashboard'),
             Tab(text: 'Denetim Kuyruğu'),
             Tab(text: 'Tüm İşler'),
             Tab(text: 'Canlı Harita'),
@@ -63,9 +64,9 @@ class _EmployerHomeScreenState extends State<EmployerHomeScreen> with SingleTick
         actions: [
           if (auth.currentUser?.rol == 'yonetici')
             IconButton(
-              icon: const Icon(Icons.person_add_alt_outlined),
-              tooltip: 'Yeni Kullanıcı',
-              onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const CreateUserScreen())),
+              icon: const Icon(Icons.people_alt_outlined),
+              tooltip: 'Saha Personeli',
+              onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const PersonnelScreen())),
             ),
           const NotificationBellButton(),
           IconButton(icon: const Icon(Icons.logout), tooltip: 'Çıkış yap', onPressed: () => auth.logout()),
@@ -73,7 +74,7 @@ class _EmployerHomeScreenState extends State<EmployerHomeScreen> with SingleTick
       ),
       body: TabBarView(
         controller: _tabController,
-        children: const [_DenetimKuyruguTab(), _TumIslerTab(), _CanliHaritaTab(), SahaDurumuBody()],
+        children: const [_DashboardTab(), _DenetimKuyruguTab(), _TumIslerTab(), _CanliHaritaTab(), SahaDurumuBody()],
       ),
       floatingActionButton: auth.currentUser?.rol == 'yonetici'
           ? FloatingActionButton.extended(
@@ -82,6 +83,177 @@ class _EmployerHomeScreenState extends State<EmployerHomeScreen> with SingleTick
               onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AssignWorkOrderScreen())),
             )
           : null,
+    );
+  }
+}
+
+// Web'deki Dashboard'ın mobil karşılığı — özet istatistikler + bugünün
+// ekip dağılımı (kim hangi rolde/takımda, günlük görev ataması sonucu).
+class _DashboardTab extends StatefulWidget {
+  const _DashboardTab();
+
+  @override
+  State<_DashboardTab> createState() => _DashboardTabState();
+}
+
+class _DashboardTabState extends State<_DashboardTab> {
+  List<WorkOrder> _items = [];
+  List<Map<String, dynamic>> _personel = [];
+  List<Map<String, dynamic>> _teams = [];
+  bool _loading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final dio = context.read<ApiClient>().dio;
+      final results = await Future.wait([dio.get('/api/work-orders'), dio.get('/api/users'), dio.get('/api/teams')]);
+      setState(() {
+        _items = (results[0].data as List<dynamic>).map((e) => WorkOrder.fromJson(e as Map<String, dynamic>)).toList();
+        _personel = (results[1].data as List<dynamic>).cast<Map<String, dynamic>>();
+        _teams = (results[2].data as List<dynamic>).cast<Map<String, dynamic>>();
+        _loading = false;
+      });
+    } catch (_) {
+      setState(() {
+        _error = 'Veriler yüklenemedi';
+        _loading = false;
+      });
+    }
+  }
+
+  int get _acikIsSayisi => _items.where((w) => ['bekliyor', 'devam_edecek', 'onay_bekliyor'].contains(w.durum)).length;
+  int get _onayBekleyenSayisi => _items.where((w) => w.durum == 'onay_bekliyor').length;
+
+  double? _avgHours(DateTime? Function(WorkOrder) start, DateTime? Function(WorkOrder) end) {
+    final diffs = <double>[];
+    for (final w in _items) {
+      final s = start(w);
+      final e = end(w);
+      if (s == null || e == null) continue;
+      final h = e.difference(s).inMinutes / 60.0;
+      if (h >= 0) diffs.add(h);
+    }
+    if (diffs.isEmpty) return null;
+    return diffs.reduce((a, b) => a + b) / diffs.length;
+  }
+
+  int get _gecikenIsler {
+    final cutoff = DateTime.now().subtract(const Duration(days: 3));
+    return _items.where((w) => ['bekliyor', 'devam_edecek'].contains(w.durum) && w.createdAt.isBefore(cutoff)).length;
+  }
+
+  String _fmtHours(double? v) => v == null ? '—' : '${v.toStringAsFixed(1)} sa';
+
+  static const _rolLabels = {'sorumlu': 'Sorumlu', 'ariza_ekibi': 'Arıza Ekibi', 'bakim_ekibi': 'Bakım Ekibi', 'kontrol_ekibi': 'Kontrol Ekibi'};
+  static const _rolSirasi = ['sorumlu', 'ariza_ekibi', 'bakim_ekibi', 'kontrol_ekibi'];
+
+  @override
+  Widget build(BuildContext context) {
+    if (_loading) return const Center(child: CircularProgressIndicator());
+    if (_error != null) return Center(child: Text(_error!));
+
+    final aktifSahaPersoneli = _personel.where((u) => u['taraf'] == 'alt_yuklenici' && u['aktif'] == true).toList();
+    final teamNameById = {for (final t in _teams) t['id'] as int: t['ad'] as String};
+
+    return RefreshIndicator(
+      onRefresh: _load,
+      child: ListView(
+        padding: const EdgeInsets.all(12),
+        children: [
+          GridView.count(
+            crossAxisCount: 2,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            crossAxisSpacing: 8,
+            mainAxisSpacing: 8,
+            childAspectRatio: 1.7,
+            children: [
+              _StatCard(value: '$_acikIsSayisi', label: 'Açık iş sayısı'),
+              _StatCard(value: '$_onayBekleyenSayisi', label: 'Onay bekleyen'),
+              _StatCard(value: _fmtHours(_avgHours((w) => w.reportedAt, (w) => w.responseStartedAt)), label: 'Ort. müdahale süresi'),
+              _StatCard(value: _fmtHours(_avgHours((w) => w.reportedAt, (w) => w.resolvedAt)), label: 'Ort. çözüm süresi'),
+              _StatCard(value: '$_gecikenIsler', label: 'Geciken işler (>3 gün)'),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Bugünün Ekip Dağılımı', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                  const SizedBox(height: 8),
+                  if (aktifSahaPersoneli.isEmpty)
+                    const Text('Aktif saha personeli yok', style: TextStyle(color: Colors.grey))
+                  else
+                    for (final rol in _rolSirasi)
+                      if (aktifSahaPersoneli.where((u) => u['rol'] == rol).isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '${_rolLabels[rol]} (${aktifSahaPersoneli.where((u) => u['rol'] == rol).length})',
+                                style: const TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w600),
+                              ),
+                              const SizedBox(height: 4),
+                              Wrap(
+                                spacing: 6,
+                                runSpacing: 6,
+                                children: aktifSahaPersoneli
+                                    .where((u) => u['rol'] == rol)
+                                    .map((u) {
+                                      final takimId = u['takimId'] as int?;
+                                      final takimAdi = takimId != null ? teamNameById[takimId] : null;
+                                      return Chip(label: Text('${u['ad']}${takimAdi != null ? ' ($takimAdi)' : ''}'));
+                                    })
+                                    .toList(),
+                              ),
+                            ],
+                          ),
+                        ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatCard extends StatelessWidget {
+  const _StatCard({required this.value, required this.label});
+
+  final String value;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(value, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+            Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+          ],
+        ),
+      ),
     );
   }
 }

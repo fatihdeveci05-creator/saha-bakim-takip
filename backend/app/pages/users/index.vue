@@ -89,8 +89,37 @@ async function deleteUser(u: AppUser) {
 }
 
 async function changeTeam(u: AppUser, takimId: string) {
-  await apiFetch(`/api/users/${u.id}`, { method: 'PATCH', body: { takimId: takimId ? Number(takimId) : null } })
-  await refresh()
+  deleteError.value = ''
+  try {
+    await apiFetch(`/api/users/${u.id}`, { method: 'PATCH', body: { takimId: takimId ? Number(takimId) : null } })
+    await refresh()
+  } catch (err) {
+    deleteError.value = (err as { data?: { statusMessage?: string } })?.data?.statusMessage || 'Takım güncellenemedi'
+  }
+}
+
+// Sahadaki "günlük görev ataması" — Ahmet'i bugün bakımdan arızaya/kontrole
+// almak gibi. Yönetici herkesin rolünü değiştirebilir; Sorumlu (Yüklenici)
+// sadece halihazırda saha personeli olan hesapları 3 saha rolü arasında
+// geçirebilir (backend PATCH /api/users/:id ile aynı kısıt).
+const sahaRolleri = ['ariza_ekibi', 'bakim_ekibi', 'kontrol_ekibi']
+function rolDegistirilebilirMi(u: AppUser) {
+  if (auth.user.value?.rol === 'yonetici') return true
+  if (auth.user.value?.rol === 'sorumlu') return u.taraf === 'alt_yuklenici' && sahaRolleri.includes(u.rol)
+  return false
+}
+function rolSecenekleri(u: AppUser) {
+  if (auth.user.value?.rol === 'sorumlu') return rolOptions.alt_yuklenici.filter((r) => sahaRolleri.includes(r.value))
+  return rolOptions[u.taraf] ?? []
+}
+async function changeRol(u: AppUser, rol: string) {
+  deleteError.value = ''
+  try {
+    await apiFetch(`/api/users/${u.id}`, { method: 'PATCH', body: { rol } })
+    await refresh()
+  } catch (err) {
+    deleteError.value = (err as { data?: { statusMessage?: string } })?.data?.statusMessage || 'Rol güncellenemedi'
+  }
 }
 </script>
 
@@ -161,7 +190,17 @@ async function changeTeam(u: AppUser, takimId: string) {
             <td>{{ u.ad }}</td>
             <td>{{ u.email }}</td>
             <td>{{ u.taraf === 'isveren' ? 'İşveren' : 'Alt Yüklenici' }}</td>
-            <td>{{ u.rol }}</td>
+            <td>
+              <select
+                v-if="rolDegistirilebilirMi(u)"
+                :value="u.rol"
+                style="width: auto"
+                @change="changeRol(u, ($event.target as HTMLSelectElement).value)"
+              >
+                <option v-for="r in rolSecenekleri(u)" :key="r.value" :value="r.value">{{ r.label }}</option>
+              </select>
+              <span v-else>{{ u.rol }}</span>
+            </td>
             <td>
               <select
                 v-if="u.taraf === 'alt_yuklenici'"

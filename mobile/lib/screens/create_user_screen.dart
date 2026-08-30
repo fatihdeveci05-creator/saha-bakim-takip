@@ -17,14 +17,15 @@ class CreateUserScreen extends StatefulWidget {
   State<CreateUserScreen> createState() => _CreateUserScreenState();
 }
 
-const _rolOptionsIsveren = [MapEntry('yonetici', 'Yönetici'), MapEntry('denetci', 'Denetçi')];
-const _rolOptionsAltYuklenici = [
+// personnel_screen.dart ile paylaşılıyor (rol düzenleme aynı seçenekleri kullanıyor).
+const rolOptionsIsveren = [MapEntry('yonetici', 'Yönetici'), MapEntry('denetci', 'Denetçi')];
+const rolOptionsAltYuklenici = [
   MapEntry('sorumlu', 'Sorumlu (Yüklenici)'),
   MapEntry('ariza_ekibi', 'Arıza Ekibi'),
   MapEntry('bakim_ekibi', 'Bakım Ekibi'),
   MapEntry('kontrol_ekibi', 'Kontrol Ekibi'),
 ];
-const _rolOptionsSahaPersoneli = [
+const rolOptionsSahaPersoneli = [
   MapEntry('ariza_ekibi', 'Arıza Ekibi'),
   MapEntry('bakim_ekibi', 'Bakım Ekibi'),
   MapEntry('kontrol_ekibi', 'Kontrol Ekibi'),
@@ -50,7 +51,7 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
   void initState() {
     super.initState();
     _isYonetici = context.read<AuthService>().currentUser?.rol == 'yonetici';
-    _rol = _isYonetici ? _rolOptionsAltYuklenici.first.key : _rolOptionsSahaPersoneli.first.key;
+    _rol = _isYonetici ? rolOptionsAltYuklenici.first.key : rolOptionsSahaPersoneli.first.key;
     _loadTeams();
   }
 
@@ -64,8 +65,8 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
   }
 
   List<MapEntry<String, String>> get _rolOptions {
-    if (!_isYonetici) return _rolOptionsSahaPersoneli;
-    return _taraf == 'isveren' ? _rolOptionsIsveren : _rolOptionsAltYuklenici;
+    if (!_isYonetici) return rolOptionsSahaPersoneli;
+    return _taraf == 'isveren' ? rolOptionsIsveren : rolOptionsAltYuklenici;
   }
 
   Future<void> _loadTeams() async {
