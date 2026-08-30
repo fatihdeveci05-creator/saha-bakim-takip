@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { requireRole } from '../../../utils/auth'
 import { useDb } from '../../../database/client'
 import { workOrders, workOrderTimeline, users } from '../../../database/schema'
-import { notifyUser } from '../../../utils/notify'
+import { notifyUser, notifyIsverenVeYuklenici } from '../../../utils/notify'
 import { getUserTeamId } from '../../../utils/teamScope'
 
 const bodySchema = z.object({
@@ -50,6 +50,7 @@ export default defineEventHandler(async (event) => {
     createdByUserId: Number(payload.sub),
   })
   await notifyUser(body.atananUserId, 'atama', `Size bir iş atandı: #${id}`, id)
+  await notifyIsverenVeYuklenici('yeni_is', `İş #${id} bir personele atandı`, id, Number(payload.sub))
 
   const [updated] = await db.select().from(workOrders).where(eq(workOrders.id, id)).limit(1)
   return updated

@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { requireAuth } from '../../utils/auth'
 import { useDb } from '../../database/client'
 import { workOrders, workOrderTimeline, equipment, sites, users, isEmriTipEnum } from '../../database/schema'
-import { notifyUser, notifyYoneticiler } from '../../utils/notify'
+import { notifyUser, notifyIsverenVeYuklenici } from '../../utils/notify'
 import { getUserTeamId } from '../../utils/teamScope'
 
 const TIP_LABELS: Record<string, string> = { bakim: 'Bakım', ariza: 'Arıza', kontrol: 'Kontrol' }
@@ -102,8 +102,16 @@ export default defineEventHandler(async (event) => {
         result.insertId,
       )
     }
+    // İşi oluşturan (Yönetici/Sorumlu) hariç, İşveren ve Yüklenici tarafındaki
+    // diğer yetkililer de yeni işten haberdar olsun.
+    await notifyIsverenVeYuklenici(
+      'yeni_is',
+      `Yeni ${TIP_LABELS[body.tip].toLowerCase()} işi oluşturuldu: ${eq1.siteAd}`,
+      result.insertId,
+      Number(payload.sub),
+    )
   } else {
-    await notifyYoneticiler('yeni_ariza', `Yeni arıza bildirildi: ${eq1.siteAd}`, result.insertId)
+    await notifyIsverenVeYuklenici('yeni_ariza', `Yeni arıza bildirildi: ${eq1.siteAd}`, result.insertId)
   }
 
   const [created] = await db.select().from(workOrders).where(eq(workOrders.id, result.insertId)).limit(1)
