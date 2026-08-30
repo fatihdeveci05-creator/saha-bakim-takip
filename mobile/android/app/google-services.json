@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "238340648373",
+    "project_id": "sahacheck",
+    "storage_bucket": "sahacheck.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:238340648373:android:aefad358f819ca4da9bdfc",
+        "android_client_info": {
+          "package_name": "com.sefirox.sahacheck"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDsV03ugfZepF8cOa4r11vpRk4a3evfTPY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

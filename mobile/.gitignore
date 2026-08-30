@@ -44,6 +44,3 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
-# Firebase yapılandırma dosyaları (proje-özel, gizli sayılabilecek API key içerir)
-android/app/google-services.json
-ios/Runner/GoogleService-Info.plist

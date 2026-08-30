@@ -1,4 +1,4 @@
-package com.sefirox.abbkontrol.abb_kontrol
+package com.sefirox.sahacheck
 
 import io.flutter.embedding.android.FlutterActivity
 

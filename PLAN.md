@@ -198,12 +198,29 @@ Flutter uygulama: iş listesi, müdahale başlat/bitir, durum seçimi (Devam Ede
 - **Gerçek cihaz erişimi** (29.08): VPS5 nginx üzerinden zaten herkese açıkmış (`http://45.155.19.196`, HTTP — domain/SSL yok), mobil `ApiConfig.baseUrl` buna güncellendi, release APK gerçek Android telefonda test edildi ve çalışıyor.
 - **Arka planda gerçek konum takibi** (29.08 gece): Android'de `flutter_foreground_task` ile kalıcı bildirimli gerçek foreground service (istenen aralıkta güvenilir), iOS'ta geolocator'ın "Her Zaman" izni + arka plan konum modu ile sürekli stream (flutter_foreground_task iOS'ta güvenilir değil, kendi belgesine göre). Emülatörde uçtan uca doğrulandı: uygulama arka plandayken VPS5 DB'de konum gerçekten ilerledi.
 - Domain+SSL: kullanıcı kararı — **gerekmiyor**, sade `http://45.155.19.196` ile devam.
-- 🔜 Kalan: offline kuyruk, iOS build (Mac gerekiyor, proje zaten hazır — `mobile/ios/`)
+- iOS build: **tamamlandı (30.08)** — kullanıcı Mac'te build aldı, sorun yok.
+- Offline senkronizasyon: **kullanıcı kararı — gerek yok**, uygulama online-first kalacak (kapsam dışı, roadmap'ten çıkarıldı).
+
+**Faz 6 — Pasife Alma Güçlendirmesi + Harita + Rol Yönetimi + Rebrand** ✅ tamamlandı (30.08)
+- Ekipman/Saha pasife alma güçlendirildi: pasif kayıtlar artık varsayılan olarak tüm aktif-kullanım listelerinden (ekipman dropdown, Saha Durumu, Saha Haritası) tamamen gizleniyor; `?includeInactive=1` ile isteğe bağlı gösterim. Saha'ya da `aktif` alanı eklendi (migration `0005_slimy_starfox.sql`).
+- Canlı Harita / Saha Haritası artık sabit İstanbul görünümü yerine tüm görünür noktaları kapsayacak şekilde otomatik zoom/fit yapıyor — hem web hem mobil (web: Leaflet `fitBounds` + tek seferlik flag; mobil: `flutter_map`'in `initialCameraFit`).
+- Güvenilirlik denetimi + 2 gerçek düzeltme: fotoğraf yükleme retry'de tekrar yüklenmiyor artık (her foto başarı anında listeden düşüyor), bildirim gönderimindeki geçici hata artık asıl işlemi (arıza kaydı/atama) "başarısız" gibi göstermiyor (try/catch ile izole edildi).
+- **Rol/ekip değiştirme ekranı** (daha önce hiç yoktu): Yönetici/Yüklenici artık hem web (`/users`, `/teams`) hem mobilde (`PersonnelScreen`) saha personelinin günlük görevini (Arıza/Bakım/Kontrol Ekibi) ve takımını değiştirebiliyor. Bununla bağlantılı bug da düzeltildi: Yüklenici hesabıyla girince bazı saha personeli hiç görünmüyordu (`/api/users` scope'u dardı) — `?scope=tumSahaPersoneli` ile çözüldü.
+- **Mobil Dashboard sekmesi**: İşveren mobil uygulamasına web'deki Dashboard'ın karşılığı eklendi (açık iş/onay bekleyen sayıları, ort. müdahale/çözüm süresi, bugünün ekip dağılımı).
+- **Bildirimleri temizle**: `DELETE /api/notifications` + mobilde "Temizle" aksiyonu (onaylı).
+- **Çıkışta 2. onay**: tüm "Çıkış Yap" butonları artık onay penceresinden geçiyor.
+- **Sol-alt kayan ikon menüsü**: AppBar'daki ek ikonlar (Tarih filtresi, Saha Durumu, Saha Personeli) %75 transparan, dikey, 2-dokunuşlu (aç→gir) bir menüye taşındı; AppBar'da sadece Bildirim+Çıkış kaldı.
+- **Rebrand**: Uygulama adı "ABB Kontrol" → **SahaCheck**, yeni kalkan+dişli logosu Android/iOS/web tüm ikon boyutlarına ve favicon'a uygulandı.
+- iOS runtime crash fix: Firebase yanlış/eksik yapılandırılırsa artık tüm uygulamayı çökertmiyor (try/catch ile izole edildi), ayrıca CocoaPods `firebase_core` build hatası çözüldü.
 
 **Faz 4 — Gelişmiş** (Faz 5'ten sonra) — analiz kısmı başladı (30.08)
 - ✅ Red oranı trendi (aylık, son 6 ay), müdahale/çözüm süresi trendi, tekrarlayan arıza tespiti (son 90 günde 2+ arıza) — Raporlar sayfasında, VPS'te canlı.
 - ✅ Saha/Ekip/Ekipman/Kullanıcı silme (İşveren) — geçmiş verisi olanlar korunuyor, pasife alma öneriliyor.
-- 🔜 Kalan: tam offline senkronizasyon, saha/ünite bazlı arıza sıklığı (istenmedi, atlandı)
+- 🔜 Kalan: saha/ünite bazlı arıza sıklığı (istenmedi, atlandı — kapsam dışı)
+
+**Faz 7 — Google Play Yayını** 🔜 sırada (30.08 başladı)
+- Kullanıcı uygulamayı Google Play Console'a kendisi yükleyecek.
+- Ön koşul: release imzalama şu an **debug key ile geçici** (`android/app/build.gradle.kts`) — Play Store gerçek bir upload key gerektirir, bu olmadan yayınlanamaz.
 
 ## 7. Açık Kararlar
 
@@ -217,7 +234,7 @@ Flutter uygulama: iş listesi, müdahale başlat/bitir, durum seçimi (Devam Ede
 - Kontrol Ekibi'nin akışı diğerlerinden tamamen farklı: konum-tabanlı, checklist/foto yok, 100m yarıçap tetiklemeli
 - İşveren mobil uygulamaya da kendi hesabıyla girer, onay/red işlemlerini oradan da yapabilir (web ile aynı API, `taraf`/`rol`'e göre farklı ekran)
 - Saha ekiplerinin canlı konumu — sadece İşveren tarafında (web+mobil) haritada gösterilir, Yüklenici GPS verisine erişemez
-- Uygulama adı: **ABB Kontrol**
+- Uygulama adı: **SahaCheck** (30.08'de "ABB Kontrol"dan değiştirildi, yeni marka ikonuyla birlikte)
 - Backend = tek Nuxt 3 Nitro projesi (API+web panel), MySQL, foto depolama şimdilik VPS diskinde (bkz. Bölüm 4)
 - Checklist yok (Arıza/Bakım için) — basit durum akışı: Devam Edecek / Tamamlandı (min. 3 foto zorunlu) / N/A → otomatik Onay Bekliyor → sadece İşveren onay/red verir. Kontrol Ekibi ayrı bir akışta (Bölüm 2).
 - **Deploy**: `45.155.19.196` (VPS5) — **canlı, gerçek deploy yapıldı** (29.08). PM2 process `abb-kontrol`, `/var/www/abb-kontrol`, app `127.0.0.1:3000`'e bağlı ama nginx (`/etc/nginx/sites-enabled/abb-kontrol`, port 80 `default_server`) üzerinden **herkese açık** (`http://45.155.19.196`, HTTP — domain/SSL yok). Mobil app'in `ApiConfig.baseUrl`'i buraya işaret ediyor. Squid+WireGuard (Sefirox proxy havuzu) aynı VPS'te dokunulmadan duruyor. Detay: hafıza `abb_kontrol_implementation`.
