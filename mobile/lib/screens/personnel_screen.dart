@@ -70,7 +70,10 @@ class _PersonnelScreenState extends State<PersonnelScreen> {
       _error = null;
     });
     try {
-      final results = await Future.wait([_dio.get('/api/users'), _dio.get('/api/teams')]);
+      final results = await Future.wait([
+        _dio.get('/api/users', queryParameters: {'scope': 'tumSahaPersoneli'}),
+        _dio.get('/api/teams'),
+      ]);
       final personel = (results[0].data as List<dynamic>)
           .cast<Map<String, dynamic>>()
           .map(_Personel.fromJson)

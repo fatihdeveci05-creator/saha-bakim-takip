@@ -3,7 +3,12 @@ import type { AppUser, Team } from '~/types'
 
 const { apiFetch } = useApi()
 const auth = useAuth()
-const { data: items, pending, error, refresh } = await useAsyncData('users', () => apiFetch<AppUser[]>('/api/users'))
+// scope=tumSahaPersoneli: Sorumlu (Yüklenici) burada TÜM saha personelini
+// görmeli (sadece kendi ekibini değil) — bu sayfa personel yönetimi/günlük
+// görev ataması için. Yönetici için zaten fark etmiyor (her zaman herkesi görür).
+const { data: items, pending, error, refresh } = await useAsyncData('users', () =>
+  apiFetch<AppUser[]>('/api/users?scope=tumSahaPersoneli'),
+)
 const { data: teamList } = await useAsyncData('teams-lookup', () => apiFetch<Team[]>('/api/teams'))
 const teamNameById = computed(() => new Map((teamList.value ?? []).map((t) => [t.id, t.ad])))
 

@@ -16,7 +16,9 @@ async function deleteTeam(t: Team) {
     deleteError.value = (err as { data?: { statusMessage?: string } })?.data?.statusMessage || 'Silinemedi'
   }
 }
-const { data: userList } = await useAsyncData('users-for-teams', () => apiFetch<AppUser[]>('/api/users'))
+// scope=tumSahaPersoneli: aksi halde Sorumlu (Yüklenici) sadece kendi
+// ekibindeki üyeleri görür, diğer ekipler "0 üye" gibi yanlış görünür.
+const { data: userList } = await useAsyncData('users-for-teams', () => apiFetch<AppUser[]>('/api/users?scope=tumSahaPersoneli'))
 
 const membersByTeam = computed(() => {
   const map = new Map<number, AppUser[]>()
