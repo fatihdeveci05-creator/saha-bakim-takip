@@ -570,31 +570,52 @@ class _TumIslerTabState extends State<_TumIslerTab> {
     );
   }
 
+  static const _tipOrder = ['ariza', 'bakim', 'kontrol'];
+
   Widget _buildList() {
     final items = _filtered;
     if (items.isEmpty) {
       return ListView(children: const [SizedBox(height: 120), Center(child: Text('Kayıt yok', style: TextStyle(color: Colors.grey)))]);
     }
     final fmt = DateFormat('dd.MM.yyyy HH:mm');
-    return ListView.separated(
+    // Tipleri (Arıza/Bakım/Kontrol) karışık tek liste yerine ayrı gridler
+    // halinde göster — birbirine karışmasınlar diye.
+    final byTip = <String, List<WorkOrder>>{for (final t in _tipOrder) t: []};
+    for (final wo in items) {
+      byTip[wo.tip]?.add(wo);
+    }
+
+    Widget buildCard(WorkOrder wo) => Card(
+      child: ListTile(
+        leading: TipBadge(tip: wo.tip),
+        title: Text(_equipmentLabel(wo.equipmentId)),
+        subtitle: Text(wo.reportedAt != null ? fmt.format(wo.reportedAt!.toLocal()) : '—'),
+        trailing: StatusBadge(durum: wo.durum),
+        onTap: () async {
+          await Navigator.of(context).push(MaterialPageRoute(builder: (_) => WorkOrderDetailScreen(workOrderId: wo.id)));
+          _load();
+        },
+      ),
+    );
+
+    return ListView(
       padding: const EdgeInsets.all(12),
-      itemCount: items.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 8),
-      itemBuilder: (context, index) {
-        final wo = items[index];
-        return Card(
-          child: ListTile(
-            leading: TipBadge(tip: wo.tip),
-            title: Text(_equipmentLabel(wo.equipmentId)),
-            subtitle: Text(wo.reportedAt != null ? fmt.format(wo.reportedAt!.toLocal()) : '—'),
-            trailing: StatusBadge(durum: wo.durum),
-            onTap: () async {
-              await Navigator.of(context).push(MaterialPageRoute(builder: (_) => WorkOrderDetailScreen(workOrderId: wo.id)));
-              _load();
-            },
+      children: [
+        for (final tip in _tipOrder) ...[
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8, top: 4),
+            child: Text(
+              '${WorkOrder.tipLabels[tip] ?? tip} (${byTip[tip]!.length})',
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
           ),
-        );
-      },
+          if (byTip[tip]!.isEmpty)
+            const Padding(padding: EdgeInsets.only(bottom: 16), child: Text('Kayıt yok', style: TextStyle(color: Colors.grey)))
+          else
+            for (final wo in byTip[tip]!) Padding(padding: const EdgeInsets.only(bottom: 8), child: buildCard(wo)),
+          const SizedBox(height: 12),
+        ],
+      ],
     );
   }
 }

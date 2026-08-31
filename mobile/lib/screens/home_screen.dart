@@ -289,6 +289,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 class _WorkOrderList extends StatelessWidget {
   const _WorkOrderList({required this.items, required this.equipmentLabel, required this.onReturn});
 
+  static const _tipOrder = ['ariza', 'bakim', 'kontrol'];
+
   final List<WorkOrder> items;
   final String Function(int equipmentId) equipmentLabel;
   final VoidCallback onReturn;
@@ -299,25 +301,42 @@ class _WorkOrderList extends StatelessWidget {
       return const Center(child: Text('Kayıt yok', style: TextStyle(color: Colors.grey)));
     }
     final fmt = DateFormat('dd.MM.yyyy HH:mm');
-    return ListView.separated(
+    // Yüklenici (sorumlu) tüm tipleri (Arıza/Bakım/Kontrol) tek listede karışık
+    // görebiliyor — birbirine karışmasınlar diye ayrı gridler halinde göster.
+    // Tek tip gören roller (Arıza/Bakım Ekibi) için doğal olarak tek grup çıkar.
+    final byTip = <String, List<WorkOrder>>{for (final t in _tipOrder) t: []};
+    for (final wo in items) {
+      byTip[wo.tip]?.add(wo);
+    }
+    final nonEmptyTips = _tipOrder.where((t) => byTip[t]!.isNotEmpty).toList();
+    final showHeaders = nonEmptyTips.length > 1;
+
+    Widget buildCard(WorkOrder wo) => Card(
+      child: ListTile(
+        leading: TipBadge(tip: wo.tip),
+        title: Text(equipmentLabel(wo.equipmentId)),
+        subtitle: Text(wo.reportedAt != null ? fmt.format(wo.reportedAt!.toLocal()) : '—'),
+        trailing: StatusBadge(durum: wo.durum),
+        onTap: () async {
+          await Navigator.of(context).push(MaterialPageRoute(builder: (_) => WorkOrderDetailScreen(workOrderId: wo.id)));
+          onReturn();
+        },
+      ),
+    );
+
+    return ListView(
       padding: const EdgeInsets.all(12),
-      itemCount: items.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 8),
-      itemBuilder: (context, index) {
-        final wo = items[index];
-        return Card(
-          child: ListTile(
-            leading: TipBadge(tip: wo.tip),
-            title: Text(equipmentLabel(wo.equipmentId)),
-            subtitle: Text(wo.reportedAt != null ? fmt.format(wo.reportedAt!.toLocal()) : '—'),
-            trailing: StatusBadge(durum: wo.durum),
-            onTap: () async {
-              await Navigator.of(context).push(MaterialPageRoute(builder: (_) => WorkOrderDetailScreen(workOrderId: wo.id)));
-              onReturn();
-            },
-          ),
-        );
-      },
+      children: [
+        for (final tip in nonEmptyTips) ...[
+          if (showHeaders)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8, top: 4),
+              child: Text('${WorkOrder.tipLabels[tip] ?? tip} (${byTip[tip]!.length})', style: Theme.of(context).textTheme.titleSmall),
+            ),
+          for (final wo in byTip[tip]!) Padding(padding: const EdgeInsets.only(bottom: 8), child: buildCard(wo)),
+          if (showHeaders) const SizedBox(height: 12),
+        ],
+      ],
     );
   }
 }

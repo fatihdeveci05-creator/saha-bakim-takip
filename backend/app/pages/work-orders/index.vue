@@ -47,6 +47,17 @@ function equipmentLabel(equipmentId: number) {
 }
 
 const tipLabels: Record<string, string> = { bakim: 'Bakım', ariza: 'Arıza', kontrol: 'Kontrol' }
+const tipOrder = ['ariza', 'bakim', 'kontrol'] as const
+
+// Tipleri (Arıza/Bakım/Kontrol) karışık tek listede değil, ayrı gridler
+// halinde göstermek için grupla — birbirine karışmasınlar diye.
+const itemsByTip = computed(() => {
+  const groups = new Map<string, WorkOrder[]>(tipOrder.map((t) => [t, []]))
+  for (const wo of items.value ?? []) {
+    groups.get(wo.tip)?.push(wo)
+  }
+  return groups
+})
 
 function fmt(d: string | null) {
   if (!d) return '—'
@@ -160,31 +171,37 @@ async function submit() {
     <div v-else-if="pending" class="muted">Yükleniyor...</div>
     <div v-else-if="!items?.length" class="card muted">Kayıt yok.</div>
 
-    <div v-else class="card" style="padding: 0">
-      <table>
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>Ekipman / Saha</th>
-            <th>Tip</th>
-            <th>Durum</th>
-            <th>Bildirim</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="wo in items" :key="wo.id">
-            <td>{{ wo.id }}</td>
-            <td>{{ equipmentLabel(wo.equipmentId) }}</td>
-            <td>{{ tipLabels[wo.tip] }}</td>
-            <td><span class="badge" :class="`badge-${wo.durum}`">{{ DURUM_LABELS[wo.durum] }}</span></td>
-            <td>{{ fmt(wo.reportedAt) }}</td>
-            <td>
-              <NuxtLink class="btn" :to="`/work-orders/${wo.id}`">Detay</NuxtLink>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+    <div v-else style="display: flex; flex-direction: column; gap: 20px">
+      <div v-for="tip in tipOrder" :key="tip">
+        <h2 style="font-size: 16px; margin: 0 0 8px">
+          {{ tipLabels[tip] }} <span class="muted" style="font-weight: normal">({{ itemsByTip.get(tip)?.length ?? 0 }})</span>
+        </h2>
+        <div v-if="!itemsByTip.get(tip)?.length" class="card muted" style="padding: 14px">Kayıt yok.</div>
+        <div v-else class="card" style="padding: 0">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Ekipman / Saha</th>
+                <th>Durum</th>
+                <th>Bildirim</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="wo in itemsByTip.get(tip)" :key="wo.id">
+                <td>{{ wo.id }}</td>
+                <td>{{ equipmentLabel(wo.equipmentId) }}</td>
+                <td><span class="badge" :class="`badge-${wo.durum}`">{{ DURUM_LABELS[wo.durum] }}</span></td>
+                <td>{{ fmt(wo.reportedAt) }}</td>
+                <td>
+                  <NuxtLink class="btn" :to="`/work-orders/${wo.id}`">Detay</NuxtLink>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   </div>
 </template>
