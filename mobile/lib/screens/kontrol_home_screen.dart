@@ -38,9 +38,20 @@ class _KontrolHomeScreenState extends State<KontrolHomeScreen> {
   @override
   void initState() {
     super.initState();
+    // Konum akışları (tek seferlik GPS + sürekli positionStream, ki bu ikincisi
+    // arka planda flutter_foreground_task'ın kendi Flutter engine'ini başlatır)
+    // ve ekstra bir HTTP isteği aynı anda tetiklenirse ANR riskine yol açtığı
+    // gözlemlendi (native platform-channel çakışması). Bu yüzden hepsi ilk
+    // frame'den SONRA ve birbirini BEKLEYEREK (paralel değil, sıralı) başlatılır.
+    WidgetsBinding.instance.addPostFrameCallback((_) => unawaited(_bootstrap()));
+  }
+
+  Future<void> _bootstrap() async {
+    if (!mounted) return;
+    await _refreshOnce();
+    if (!mounted) return;
     _sub = context.read<LocationService>().positionStream.listen(_onPosition);
-    unawaited(_loadAssignedTasks());
-    unawaited(_refreshOnce());
+    await _loadAssignedTasks();
   }
 
   // Yönetici/Sorumlu tarafından doğrudan atanmış "kontrol" (veya başka tip)
@@ -165,7 +176,8 @@ class _KontrolHomeScreenState extends State<KontrolHomeScreen> {
   }
 
   Future<void> _refreshAll() async {
-    await Future.wait([_refreshOnce(), _loadAssignedTasks()]);
+    await _refreshOnce();
+    await _loadAssignedTasks();
   }
 
   Widget _buildBody() {
