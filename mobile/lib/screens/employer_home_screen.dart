@@ -659,6 +659,27 @@ class _CanliHaritaTabState extends State<_CanliHaritaTab> {
     }
   }
 
+  Color _rolRengi(String rol) {
+    switch (rol) {
+      case 'ariza_ekibi':
+        return Colors.red;
+      case 'bakim_ekibi':
+        return Colors.indigo;
+      case 'kontrol_ekibi':
+        return Colors.teal;
+      default:
+        return Colors.blue;
+    }
+  }
+
+  String _relativeTime(DateTime updatedAt) {
+    final diff = DateTime.now().difference(updatedAt);
+    if (diff.inMinutes < 1) return 'az önce';
+    if (diff.inMinutes < 60) return '${diff.inMinutes} dk önce';
+    if (diff.inHours < 24) return '${diff.inHours} sa önce';
+    return '${diff.inDays} gün önce';
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_loading) return const Center(child: CircularProgressIndicator());
@@ -689,7 +710,7 @@ class _CanliHaritaTabState extends State<_CanliHaritaTab> {
                 (loc) => Marker(
                   point: ll.LatLng(loc.lat, loc.lng),
                   width: 160,
-                  height: 60,
+                  height: 70,
                   child: Column(
                     children: [
                       Container(
@@ -697,9 +718,15 @@ class _CanliHaritaTabState extends State<_CanliHaritaTab> {
                         decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(4), boxShadow: const [
                           BoxShadow(color: Colors.black26, blurRadius: 3),
                         ]),
-                        child: Text(loc.ad, style: const TextStyle(fontSize: 11)),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(loc.ad, style: const TextStyle(fontSize: 11)),
+                            Text(_relativeTime(loc.updatedAt), style: const TextStyle(fontSize: 9, color: Colors.grey)),
+                          ],
+                        ),
                       ),
-                      const Icon(Icons.location_on, color: Colors.red, size: 28),
+                      Icon(Icons.location_on, color: _rolRengi(loc.rol), size: 28),
                     ],
                   ),
                 ),
